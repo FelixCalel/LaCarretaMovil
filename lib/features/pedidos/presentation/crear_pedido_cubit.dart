@@ -203,11 +203,18 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
       final userIdStr = await _storage.read(key: 'user_id');
       final userId = int.tryParse(userIdStr ?? '') ?? 0;
 
-      await datasource.createPedido(
+      final newPedido = await datasource.createPedido(
         deudorId: deudorId,
         tiendaId: tiendaId,
         ciudadId: ciudadId,
         usuarioId: userId,
+      );
+      
+      // Auto-populate items with quantity 0 for the new order
+      await datasource.populatePedidoModelo(
+        deudorId: deudorId,
+        pedidoId: newPedido.id,
+        tiendaId: tiendaId,
       );
       
       emit(state.copyWith(successMessage: 'Borrador creado correctamente'));

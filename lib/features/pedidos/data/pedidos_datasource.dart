@@ -48,6 +48,21 @@ class PedidosDatasource {
     }
   }
 
+  Future<void> populatePedidoModelo({
+    required int deudorId,
+    required int pedidoId,
+    required int tiendaId,
+  }) async {
+    try {
+      await apiClient.dio.get(
+        '/detalle/pedido/pedidoModelo/$deudorId/$pedidoId/$tiendaId',
+      );
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data['error'] ?? 'Error al popular pedido modelo';
+      throw Exception(errorMessage);
+    }
+  }
+
   Future<List<CatalogCiudad>> getCiudades() async {
     try {
       final response = await apiClient.dio.get('/ciudad/todos');
