@@ -1,0 +1,253 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../data/pedidos_datasource.dart';
+import '../domain/detalle_model.dart';
+import '../domain/producto_model.dart';
+import 'crear_pedido_state.dart';
+
+class CrearPedidoCubit extends Cubit<CrearPedidoState> {
+  final PedidosDatasource datasource;
+  final _storage = const FlutterSecureStorage();
+
+  CrearPedidoCubit({required this.datasource}) : super(const CrearPedidoState());
+
+  Future<void> loadData() async {
+    emit(state.copyWith(isLoading: true, clearError: true));
+    try {
+      final userIdStr = await _storage.read(key: 'user_id');
+      final userId = int.tryParse(userIdStr ?? '') ?? 0;
+
+      final allPedidos = await datasource.getPedidos();
+      final draftPedidos = allPedidos.where((p) => p.estadoId == 1 && p.deudorId != 0 && p.usuarioId == userId).toList();
+
+      final ciudades = await datasource.getCiudades();
+      final deudores = await datasource.getDeudores();
+      final tiendas = await datasource.getTiendas();
+
+      final userRoutesStr = await _storage.read(key: 'user_routes') ?? '';
+      final userRoutes = userRoutesStr.split(',')
+          .map((id) => int.tryParse(id) ?? 0)
+          .where((id) => id != 0)
+          .toList();
+
+      final userPaisIdStr = await _storage.read(key: 'user_pais_id');
+      final userPaisId = int.tryParse(userPaisIdStr ?? '') ?? 0;
+
+      emit(state.copyWith(
+        draftPedidos: draftPedidos,
+        ciudades: ciudades,
+        deudores: deudores,
+        tiendas: tiendas,
+        userRoutes: userRoutes,
+        userPaisId: userPaisId,
+      ));
+
+      for (var p in draftPedidos) {
+        if (state.expandedPedidos[p.id] == true) {
+          await loadPedidoDetails(p.id, p.deudorId);
+        }
+      }
+    } catch (e) {
+      emit(state.copyWith(error: 'Error al cargar datos: $e'));
+    } finally {
+      emit(state.copyWith(isLoading: false));
+    }
+  }
+
+  Future<void> loadPedidoDetails(int pedidoId, int deudorId) async {
+    final loading = Map<int, bool>.from(state.loadingDetails);
+    loading[pedidoId] = true;
+    emit(state.copyWith(loadingDetails: loading));
+
+    try {
+      final detalles = await datasource.getPedidoDetalles(pedidoId);
+      final pedidoDetalles = Map<int, List<DetalleModel>>.from(state.pedidoDetalles);
+      pedidoDetalles[pedidoId] = detalles;
+
+      final deudorProductos = Map<int, List<ProductoModel>>.from(state.deudorProductos);
+      if (!deudorProductos.containsKey(deudorId)) {
+        deudorProductos[deudorId] = await datasource.getDeudorProductos(deudorId);
+      }
+
+      emit(state.copyWith(
+        pedidoDetalles: pedidoDetalles,
+        deudorProductos: deudorProductos,
+      ));
+    } catch (e) {
+      emit(state.copyWith(error: 'Error cargando detalles del pedido $pedidoId: $e'));
+    } finally {
+      final newLoading = Map<int, bool>.from(state.loadingDetails);
+      newLoading[pedidoId] = false;
+      emit(state.copyWith(loadingDetails: newLoading));
+    }
+  }
+
+  Future<void> toggleExpand(int pedidoId, int deudorId) async {
+    final isExpanded = state.expandedPedidos[pedidoId] ?? false;
+    final expanded = Map<int, bool>.from(state.expandedPedidos);
+    expanded[pedidoId] = !isExpanded;
+    emit(state.copyWith(expandedPedidos: expanded));
+
+    if (!isExpanded && !state.pedidoDetalles.containsKey(pedidoId)) {
+      await loadPedidoDetails(pedidoId, deudorId);
+    }
+  }
+
+  Future<void> updateItemQuantity(int pedidoId, DetalleModel detail, int newQty) async {
+    if (newQty < 1) return;
+
+    // Optimistic Update
+    final detailsMap = Map<int, List<DetalleModel>>.from(state.pedidoDetalles);
+    final detailsList = detailsMap[pedidoId];
+    if (detailsList != null) {
+      final index = detailsList.indexWhere((d) => d.id == detail.id);
+      if (index != -1) {
+        final newList = List<DetalleModel>.from(detailsList);
+        newList[index] = detail.copyWith(cantidad: newQty);
+        detailsMap[pedidoId] = newList;
+        emit(state.copyWith(pedidoDetalles: detailsMap));
+      }
+    }
+
+    try {
+      await datasource.updateItemQuantity(pedidoId, detail.id, newQty);
+    } catch (e) {
+      // Revertir recargando desde API
+      await loadPedidoDetails(pedidoId, detail.pedidoId);
+      emit(state.copyWith(error: 'Error al actualizar cantidad: $e'));
+    }
+  }
+
+  Future<void> deleteItem(int pedidoId, DetalleModel detail) async {
+    try {
+      await datasource.deleteItem(detail.id);
+      await loadPedidoDetails(pedidoId, detail.pedidoId);
+    } catch (e) {
+      emit(state.copyWith(error: 'Error al eliminar producto: $e'));
+    }
+  }
+
+  void selectProduct(int pedidoId, int? productId) {
+    final selected = Map<int, int?>.from(state.selectedProductForPedido);
+    selected[pedidoId] = productId;
+    emit(state.copyWith(selectedProductForPedido: selected));
+  }
+
+  Future<void> addItemToPedido(int pedidoId, int deudorId, int qty) async {
+    final prodId = state.selectedProductForPedido[pedidoId];
+    if (prodId == null) {
+      emit(state.copyWith(error: 'Seleccione un producto'));
+      return;
+    }
+
+    try {
+      final userIdStr = await _storage.read(key: 'user_id');
+      final userId = int.tryParse(userIdStr ?? '') ?? 0;
+
+      await datasource.addItemToPedido(
+        pedidoId: pedidoId,
+        productoId: prodId,
+        cantidad: qty,
+        userId: userId,
+      );
+
+      selectProduct(pedidoId, null);
+      await loadPedidoDetails(pedidoId, deudorId);
+    } catch (e) {
+      emit(state.copyWith(error: 'Error al agregar producto: $e'));
+    }
+  }
+
+  Future<void> deletePedido(int pedidoId) async {
+    try {
+      await datasource.deletePedido(pedidoId);
+      emit(state.copyWith(successMessage: 'Borrador eliminado correctamente'));
+      await loadData();
+    } catch (e) {
+      emit(state.copyWith(error: 'Error al eliminar borrador: $e'));
+    }
+  }
+
+  Future<void> realizarPedido(int pedidoId, String comentario, String fecha) async {
+    final details = state.pedidoDetalles[pedidoId] ?? [];
+    if (details.isEmpty) {
+      emit(state.copyWith(error: 'Agregue productos al pedido antes de realizarlo'));
+      return;
+    }
+
+    try {
+      final userIdStr = await _storage.read(key: 'user_id');
+      final userId = int.tryParse(userIdStr ?? '') ?? 0;
+
+      await datasource.realizarPedido(
+        pedidoId: pedidoId,
+        comentario: comentario,
+        fecha: fecha,
+        userId: userId,
+      );
+
+      emit(state.copyWith(successMessage: 'Pedido realizado exitosamente'));
+      await loadData();
+    } catch (e) {
+      emit(state.copyWith(error: 'Error al procesar pedido: $e'));
+    }
+  }
+
+  Future<void> createPedido({
+    required int ciudadId,
+    required int deudorId,
+    required int tiendaId,
+  }) async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final userIdStr = await _storage.read(key: 'user_id');
+      final userId = int.tryParse(userIdStr ?? '') ?? 0;
+
+      await datasource.createPedido(
+        deudorId: deudorId,
+        tiendaId: tiendaId,
+        ciudadId: ciudadId,
+        usuarioId: userId,
+      );
+      
+      emit(state.copyWith(successMessage: 'Borrador creado correctamente'));
+      await loadData();
+    } catch (e) {
+      emit(state.copyWith(error: 'Error al crear borrador: $e'));
+      emit(state.copyWith(isLoading: false));
+    }
+  }
+
+  Future<void> copiarUltimoPedido({
+    required int ciudadId,
+    required int deudorId,
+    required int tiendaId,
+  }) async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      final userIdStr = await _storage.read(key: 'user_id');
+      final userId = int.tryParse(userIdStr ?? '') ?? 0;
+
+      await datasource.copiarUltimoPedido(
+        deudorId: deudorId,
+        tiendaId: tiendaId,
+        ciudadId: ciudadId,
+        usuarioId: userId,
+      );
+      
+      emit(state.copyWith(successMessage: 'Borrador copiado correctamente del último pedido'));
+      await loadData();
+    } catch (e) {
+      emit(state.copyWith(error: 'Error al copiar borrador: $e'));
+      emit(state.copyWith(isLoading: false));
+    }
+  }
+
+  void clearError() {
+    emit(state.copyWith(clearError: true));
+  }
+
+  void clearSuccess() {
+    emit(state.copyWith(clearSuccess: true));
+  }
+}
