@@ -8,20 +8,14 @@ class Environment {
   );
 
   static String get apiBaseUrl {
-    if (apiUrl.isNotEmpty) return apiUrl;
-
-    // Si estamos en modo release (APK compilado o Shorebird), usar el servidor real
-    if (kReleaseMode) {
-      return 'http://localhost:3000/api';
+    if (apiUrl.isEmpty) {
+      throw Exception(
+        '⚠️ ERROR CRÍTICO: No se encontró la URL del servidor. '
+        'Asegúrate de ejecutar o compilar la app pasando el archivo de variables: '
+        '--dart-define-from-file=env.json',
+      );
     }
-
-    // Valores de desarrollo por defecto (modo debug)
-    if (kIsWeb) {
-      return 'http://localhost:3000/api';
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api';
-    } else {
-      return 'http://localhost:3000/api';
-    }
+    
+    return apiUrl;
   }
 }
