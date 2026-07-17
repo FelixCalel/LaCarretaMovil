@@ -7,11 +7,13 @@ class NotificationsState {
   final List<NotificationModel> notifications;
   final bool isLoading;
   final NotificationModel? lastNewNotification;
+  final int limit;
 
   NotificationsState({
     required this.notifications,
     required this.isLoading,
     this.lastNewNotification,
+    this.limit = 10,
   });
 
   int get unreadCount => notifications.where((n) => !n.leido).length;
@@ -20,11 +22,13 @@ class NotificationsState {
     List<NotificationModel>? notifications,
     bool? isLoading,
     NotificationModel? lastNewNotification,
+    int? limit,
   }) {
     return NotificationsState(
       notifications: notifications ?? this.notifications,
       isLoading: isLoading ?? this.isLoading,
       lastNewNotification: lastNewNotification,
+      limit: limit ?? this.limit,
     );
   }
 }
@@ -34,7 +38,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
   StreamSubscription<NotificationModel>? _subscription;
 
   NotificationsCubit()
-      : super(NotificationsState(notifications: [], isLoading: false));
+      : super(NotificationsState(notifications: [], isLoading: false, limit: 10));
 
   void listenToWebSocket() {
     _subscription?.cancel();
@@ -50,12 +54,16 @@ class NotificationsCubit extends Cubit<NotificationsState> {
   }
 
   Future<void> loadNotifications() async {
-    emit(state.copyWith(isLoading: true));
+    emit(state.copyWith(isLoading: true, limit: 10));
     final list = await _service.fetchNotifications();
     emit(state.copyWith(
       notifications: list,
       isLoading: false,
     ));
+  }
+
+  void loadMore() {
+    emit(state.copyWith(limit: state.limit + 10));
   }
 
   Future<void> markAsRead(int id) async {
@@ -103,7 +111,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     _subscription?.cancel();
     _subscription = null;
     _service.disconnect();
-    emit(NotificationsState(notifications: [], isLoading: false));
+    emit(NotificationsState(notifications: [], isLoading: false, limit: 10));
   }
 
   @override

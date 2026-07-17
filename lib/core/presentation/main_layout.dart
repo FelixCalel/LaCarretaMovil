@@ -463,6 +463,7 @@ class _MainLayoutState extends State<MainLayout> {
           initialChildSize: 0.6,
           minChildSize: 0.3,
           maxChildSize: 0.9,
+          expand: false,
           builder: (_, scrollController) {
             return NotificationsBottomSheet(scrollController: scrollController);
           },

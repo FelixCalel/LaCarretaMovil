@@ -22,6 +22,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
   String? _selectedDeudor;
   String? _selectedTienda;
   String? _selectedEstado;
+  int _limit = 10;
 
   void _showPedidoDetails(BuildContext context, PedidoModel pedido) {
     showModalBottomSheet(
@@ -118,14 +119,24 @@ class _PedidosScreenState extends State<PedidosScreen> {
                     deudores: deudores,
                     tiendas: tiendas,
                     estados: estados,
-                    onDeudorChanged: (val) => setState(() => _selectedDeudor = val),
-                    onTiendaChanged: (val) => setState(() => _selectedTienda = val),
-                    onEstadoChanged: (val) => setState(() => _selectedEstado = val),
+                    onDeudorChanged: (val) => setState(() {
+                      _selectedDeudor = val;
+                      _limit = 10;
+                    }),
+                    onTiendaChanged: (val) => setState(() {
+                      _selectedTienda = val;
+                      _limit = 10;
+                    }),
+                    onEstadoChanged: (val) => setState(() {
+                      _selectedEstado = val;
+                      _limit = 10;
+                    }),
                     onClearFilters: () {
                       setState(() {
                         _selectedDeudor = null;
                         _selectedTienda = null;
                         _selectedEstado = null;
+                        _limit = 10;
                       });
                     },
                   ),
@@ -156,17 +167,46 @@ class _PedidosScreenState extends State<PedidosScreen> {
                             onRefresh: () async {
                               context.read<PedidosCubit>().fetchPedidos();
                             },
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(12.0),
-                              itemCount: filteredPedidos.length,
-                              itemBuilder: (context, index) {
-                                final pedido = filteredPedidos[index];
-                                return PedidoCard(
-                                  pedido: pedido,
-                                  onViewDetails: () => _showPedidoDetails(context, pedido),
-                                );
-                              },
-                            ),
+                            child: () {
+                              final displayedPedidos = filteredPedidos.take(_limit).toList();
+                              final hasMore = filteredPedidos.length > _limit;
+
+                              return ListView.builder(
+                                padding: const EdgeInsets.all(12.0),
+                                itemCount: displayedPedidos.length + (hasMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == displayedPedidos.length) {
+                                    final remaining = filteredPedidos.length - _limit;
+                                    return InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _limit += 10;
+                                        });
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                        child: Center(
+                                          child: Text(
+                                            'Cargar más ($remaining restantes)',
+                                            style: TextStyle(
+                                              color: Theme.of(context).primaryColor,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  final pedido = displayedPedidos[index];
+                                  return PedidoCard(
+                                    pedido: pedido,
+                                    onViewDetails: () => _showPedidoDetails(context, pedido),
+                                  );
+                                },
+                              );
+                            }(),
                           ),
                   ),
                 ],
