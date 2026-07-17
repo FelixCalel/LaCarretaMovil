@@ -3,36 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
-import '../theme/app_theme.dart';
 import '../theme/theme_cubit.dart';
-
-class ModuloModel {
-  final int id;
-  final String nombre;
-  final String icono;
-  final List<OpcionModel> opciones;
-
-  ModuloModel({
-    required this.id,
-    required this.nombre,
-    required this.icono,
-    required this.opciones,
-  });
-}
-
-class OpcionModel {
-  final int id;
-  final String nombre;
-  final String ruta;
-  final String icono;
-
-  OpcionModel({
-    required this.id,
-    required this.nombre,
-    required this.ruta,
-    required this.icono,
-  });
-}
+import 'models/modulo_model.dart';
+import 'models/opcion_model.dart';
+import 'widgets/main_drawer.dart';
+import 'widgets/main_bottom_nav.dart';
 
 class MainLayout extends StatefulWidget {
   final String title;
@@ -203,115 +178,11 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
-  IconData _getIconData(String name) {
-    switch (name) {
-      case 'FaTools': return Icons.build;
-      case 'MdPerson': return Icons.person;
-      case 'FiShoppingCart': return Icons.shopping_cart;
-      case 'FaCashRegister': return Icons.point_of_sale;
-      case 'FiClipboard': return Icons.assignment;
-      case 'AiFillDashboard': return Icons.dashboard;
-      case 'FaClipboardList': return Icons.assignment;
-      case 'BsFillHouseDoorFill': return Icons.home;
-      case 'FaShippingFast': return Icons.local_shipping;
-      case 'BsGraphUp': return Icons.trending_up;
-      case 'MdApproval': return Icons.check_circle;
-      case 'FaCheckCircle': return Icons.done;
-      case 'BsPersonCheckFill': return Icons.person_pin;
-      case 'FiArchive': return Icons.archive;
-      case 'MdEvent': return Icons.event;
-      case 'FaBook': return Icons.book;
-      case 'MdShoppingCart': return Icons.shopping_basket;
-      case 'FaUsers': return Icons.people;
-      case 'AiOutlinePhone': return Icons.phone;
-      case 'MdAssignmentTurnedIn': return Icons.assignment_turned_in;
-      case 'FaNetworkWired': return Icons.lan;
-      default: return Icons.folder_open;
-    }
-  }
-
-  void _navigateToOption(String routePath, String optionName) {
-    if (optionName == 'Crear Pedido' || optionName == 'Historial Pedido') {
-      context.go('/pedidos');
-    } else if (optionName == 'Pedidos Entrantes' || optionName == 'Exportar Pedido') {
-      context.go('/ventas');
-    } else if (optionName == 'Asignación de Áreas' || optionName == 'Pendiente') {
-      context.go('/produccion');
-    } else if (optionName == 'Comprador' || optionName == 'Jefe de compras' || optionName == 'Control de Calidad') {
-      context.go('/compras');
-    } else {
-      // Fallback por defecto según patrón de ruta
-      if (routePath.contains('pedido')) {
-        context.go('/pedidos');
-      } else if (routePath.contains('ventas') || routePath.contains('exportar')) {
-        context.go('/ventas');
-      } else if (routePath.contains('produccion') || routePath.contains('areas')) {
-        context.go('/produccion');
-      } else if (routePath.contains('compras') || routePath.contains('comprador')) {
-        context.go('/compras');
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
     final primaryColor = Theme.of(context).primaryColor;
 
-    // Determinar visibilidad para BottomNavigationBar (Footer)
-    final bool hasPedidosModule = _groupedModules.any((m) => m.id == 2);
-    final bool hasVentasModule = _groupedModules.any((m) => m.id == 3);
-    final bool hasProduccionModule = _groupedModules.any((m) => m.id == 13);
-
-    // Configurar lista dinámica del BottomNavigationBar
-    final List<String> barRoutes = ['/home'];
-    final List<BottomNavigationBarItem> barItems = [
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.home),
-        label: 'Inicio',
-      ),
-    ];
-
-    if (hasPedidosModule) {
-      barRoutes.add('/pedidos');
-      barItems.add(const BottomNavigationBarItem(
-        icon: Icon(Icons.shopping_basket),
-        label: 'Pedidos',
-      ));
-    }
-    if (hasVentasModule) {
-      barRoutes.add('/ventas');
-      barItems.add(const BottomNavigationBarItem(
-        icon: Icon(Icons.monetization_on),
-        label: 'Ventas',
-      ));
-    }
-    if (hasProduccionModule) {
-      barRoutes.add('/produccion');
-      barItems.add(const BottomNavigationBarItem(
-        icon: Icon(Icons.precision_manufacturing),
-        label: 'Producción',
-      ));
-    }
-
-    int getSelectedIndex() {
-      final index = barRoutes.indexOf(location);
-      if (index != -1) return index;
-      for (int i = 0; i < barRoutes.length; i++) {
-        if (location.startsWith(barRoutes[i]) && barRoutes[i] != '/home') {
-          return i;
-        }
-      }
-      return 0;
-    }
-
-    void onItemTapped(int index) {
-      if (index >= 0 && index < barRoutes.length) {
-        context.go(barRoutes[index]);
-      }
-    }
-
-    // Configurar acciones del AppBar con el botón de tema
     final List<Widget> actionsList = [];
     if (widget.actions != null) {
       actionsList.addAll(widget.actions!);
@@ -339,172 +210,23 @@ class _MainLayoutState extends State<MainLayout> {
         ),
         actions: actionsList,
       ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            // Drawer Header con Logo de La Carreta
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.primaryColor, AppTheme.primaryLightColor],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Image.asset(
-                        'assets/images/LogoLaCarreta.png',
-                        height: 50.0,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const CircleAvatar(
-                            backgroundColor: Colors.white,
-                            child: Icon(Icons.store, color: AppTheme.primaryColor),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12.0),
-                      const Text(
-                        'La Carreta',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12.0),
-                  Text(
-                    _userName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.0,
-                    ),
-                  ),
-                  Text(
-                    _userRole.toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12.0,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.home),
-                    title: const Text('Inicio'),
-                    selected: location == '/home',
-                    selectedColor: primaryColor,
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/home');
-                    },
-                  ),
-                  ..._groupedModules.map((modulo) {
-                    final bool isModuloSelected = (location == '/pedidos' && modulo.id == 2) ||
-                        (location == '/ventas' && modulo.id == 3) ||
-                        (location == '/compras' && modulo.id == 9) ||
-                        (location == '/produccion' && modulo.id == 13);
-
-                    if (modulo.opciones.isEmpty) {
-                      return ListTile(
-                        leading: Icon(_getIconData(modulo.icono)),
-                        title: Text(modulo.nombre),
-                        selected: isModuloSelected,
-                        selectedColor: primaryColor,
-                        onTap: () {
-                          Navigator.pop(context);
-                          if (modulo.id == 2) context.go('/pedidos');
-                          if (modulo.id == 3) context.go('/ventas');
-                          if (modulo.id == 9) context.go('/compras');
-                          if (modulo.id == 13) context.go('/produccion');
-                        },
-                      );
-                    }
-
-                    return ExpansionTile(
-                      leading: Icon(
-                        _getIconData(modulo.icono),
-                        color: isModuloSelected ? primaryColor : null,
-                      ),
-                      title: Text(
-                        modulo.nombre,
-                        style: TextStyle(
-                          color: isModuloSelected ? primaryColor : null,
-                          fontWeight: isModuloSelected ? FontWeight.bold : null,
-                        ),
-                      ),
-                      children: modulo.opciones.map((opcion) {
-                        final bool isOptionSelected =
-                            (location == '/pedidos' && (opcion.nombre == 'Crear Pedido' || opcion.nombre == 'Historial Pedido')) ||
-                            (location == '/ventas' && (opcion.nombre == 'Pedidos Entrantes' || opcion.nombre == 'Exportar Pedido')) ||
-                            (location == '/produccion' && (opcion.nombre == 'Asignación de Áreas' || opcion.nombre == 'Pendiente')) ||
-                            (location == '/compras' && (opcion.nombre == 'Comprador' || opcion.nombre == 'Jefe de compras' || opcion.nombre == 'Control de Calidad'));
-
-                        return ListTile(
-                          contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
-                          leading: Icon(
-                            _getIconData(opcion.icono),
-                            size: 20.0,
-                            color: isOptionSelected ? primaryColor : null,
-                          ),
-                          title: Text(
-                            opcion.nombre,
-                            style: TextStyle(
-                              fontSize: 14.0,
-                              color: isOptionSelected ? primaryColor : null,
-                              fontWeight: isOptionSelected ? FontWeight.bold : null,
-                            ),
-                          ),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _navigateToOption(opcion.ruta, opcion.nombre);
-                          },
-                        );
-                      }).toList(),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.redAccent),
-              title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.redAccent)),
-              onTap: () {
-                Navigator.pop(context);
-                _logout();
-              },
-            ),
-            const SizedBox(height: 12.0),
-          ],
-        ),
+      drawer: MainDrawer(
+        userName: _userName,
+        userRole: _userRole,
+        groupedModules: _groupedModules,
+        location: location,
+        primaryColor: primaryColor,
+        onLogout: _logout,
       ),
       body: widget.body,
       floatingActionButton: widget.floatingActionButton,
-      bottomNavigationBar: barItems.length < 2
-          ? null
-          : BottomNavigationBar(
-              currentIndex: getSelectedIndex(),
-              onTap: onItemTapped,
-              selectedItemColor: primaryColor,
-              unselectedItemColor: Colors.grey,
-              type: BottomNavigationBarType.fixed,
-              items: barItems,
-            ),
+      bottomNavigationBar: _groupedModules.any((m) => m.id == 2 || m.id == 3 || m.id == 13)
+          ? MainBottomNav(
+              groupedModules: _groupedModules,
+              location: location,
+              primaryColor: primaryColor,
+            )
+          : null,
     );
   }
 }

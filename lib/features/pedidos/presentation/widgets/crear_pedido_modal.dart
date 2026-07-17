@@ -12,7 +12,7 @@ class CrearPedidoModal extends StatefulWidget {
   final Function(int ciudadId, int deudorId, int tiendaId) onCopyLastPedido;
 
   const CrearPedidoModal({
-    key,
+    super.key,
     required this.ciudades,
     required this.deudores,
     required this.tiendas,
@@ -20,7 +20,7 @@ class CrearPedidoModal extends StatefulWidget {
     required this.userPaisId,
     required this.onSave,
     required this.onCopyLastPedido,
-  }) : super(key: key);
+  });
 
   @override
   State<CrearPedidoModal> createState() => _CrearPedidoModalState();
@@ -161,7 +161,7 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
               filled: true,
               fillColor: isTiendaAsignadaDisabled ? disabledBgColor : assignedBgColor,
             ),
-            value: selectedAssignedTiendaId,
+            initialValue: selectedAssignedTiendaId,
             items: isTiendaAsignadaDisabled
                 ? []
                 : assignedTiendas
@@ -221,7 +221,7 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
               filled: true,
               fillColor: isTiendaNoAsignadaDisabled ? disabledBgColor : unassignedBgColor,
             ),
-            value: selectedUnassignedTiendaId,
+            initialValue: selectedUnassignedTiendaId,
             items: isTiendaNoAsignadaDisabled
                 ? []
                 : unassignedTiendas

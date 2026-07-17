@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
@@ -49,28 +50,28 @@ class LoginCubit extends Cubit<LoginState> {
     try {
       final savedUser = await _storage.read(key: 'bio_user');
       final savedPass = await _storage.read(key: 'bio_pass');
-      print('=== DEBUG BIOMETRICS ===');
-      print('Saved user: $savedUser');
-      print('Saved pass length: ${savedPass?.length ?? 0}');
+      debugPrint('=== DEBUG BIOMETRICS ===');
+      debugPrint('Saved user: $savedUser');
+      debugPrint('Saved pass length: ${savedPass?.length ?? 0}');
       
       if (savedUser != null && savedPass != null) {
         final canCheck = await _localAuth.canCheckBiometrics;
         final isSupported = await _localAuth.isDeviceSupported();
-        print('canCheckBiometrics: $canCheck');
-        print('isDeviceSupported: $isSupported');
+        debugPrint('canCheckBiometrics: $canCheck');
+        debugPrint('isDeviceSupported: $isSupported');
         
         if (canCheck || isSupported) {
-          print('Emitting BiometricsReady(true)');
+          debugPrint('Emitting BiometricsReady(true)');
           emit(BiometricsReady(true, savedUsername: savedUser));
         } else {
-          print('Biometrics not supported or not enrolled');
+          debugPrint('Biometrics not supported or not enrolled');
         }
       } else {
-        print('No saved credentials for biometrics');
+        debugPrint('No saved credentials for biometrics');
       }
-      print('========================');
+      debugPrint('========================');
     } catch (e) {
-      print('Error checking biometrics: $e');
+      debugPrint('Error checking biometrics: $e');
     }
   }
 

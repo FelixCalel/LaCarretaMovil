@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 class Environment {
   static const String apiUrl = String.fromEnvironment(

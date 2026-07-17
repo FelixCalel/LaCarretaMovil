@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -55,7 +56,7 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
     super.dispose();
   }
 
-  Future<void> _showBiometricPrompt(BuildContext context, LoginSuccess state) async {
+  Future<void> _showBiometricPrompt(LoginSuccess state) async {
     final cubit = context.read<LoginCubit>();
     final result = await showDialog<bool>(
       context: context,
@@ -79,16 +80,14 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
 
     if (result == true) {
       await cubit.enableBiometrics(state.savedUsername, state.savedPassword);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Huella habilitada correctamente'), backgroundColor: Colors.green),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Huella habilitada correctamente'), backgroundColor: Colors.green),
+      );
     }
     
-    if (mounted) {
-      context.go('/home');
-    }
+    if (!mounted) return;
+    context.go('/home');
   }
 
   @override
@@ -96,9 +95,9 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
     return Scaffold(
       body: BlocConsumer<LoginCubit, LoginState>(
         listener: (context, state) {
-          print('=== LOGIN SCREEN LISTENER: state is ${state.runtimeType} ===');
+          debugPrint('=== LOGIN SCREEN LISTENER: state is ${state.runtimeType} ===');
           if (state is BiometricsReady) {
-            print('BiometricsReady received: canCheck=${state.canCheckBiometrics}, username=${state.savedUsername}');
+            debugPrint('BiometricsReady received: canCheck=${state.canCheckBiometrics}, username=${state.savedUsername}');
             setState(() {
               _showBiometricButton = state.canCheckBiometrics;
               if (state.savedUsername != null && _usernameController.text.isEmpty) {
@@ -107,7 +106,7 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
             });
             // Auto prompt only once when the screen loads
             if (!_autoPromptFired && state.canCheckBiometrics) {
-              print('Auto prompting biometrics...');
+              debugPrint('Auto prompting biometrics...');
               _autoPromptFired = true;
               context.read<LoginCubit>().loginWithBiometrics();
             }
@@ -120,7 +119,7 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
             );
             
             if (state.promptBiometrics) {
-              _showBiometricPrompt(context, state);
+              _showBiometricPrompt(state);
             } else {
               context.go('/home');
             }
