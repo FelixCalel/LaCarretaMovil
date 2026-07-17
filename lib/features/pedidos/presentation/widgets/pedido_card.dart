@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../domain/pedido_model.dart';
 
 class PedidoCard extends StatelessWidget {
@@ -177,6 +178,6 @@ class PedidoCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).animate().fade(duration: 400.ms).slideX(begin: 0.1, end: 0, curve: Curves.easeOutQuad);
   }
 }

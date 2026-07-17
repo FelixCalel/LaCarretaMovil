@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import '../../../core/services/secure_storage_service.dart';
+import '../../../core/services/logger_service.dart';
 import '../data/auth_datasource.dart';
 import '../domain/user_model.dart';
 
@@ -24,15 +24,6 @@ class LoginFailure extends LoginState {
   LoginFailure(this.error);
 }
 
-class LoginBiometricsAvailable extends LoginState {
-  // This state is just a signal to the UI that biometrics are available 
-  // so the UI can show the fingerprint button. 
-  // It shouldn't overwrite the form state, so we might want to handle it differently, 
-  // but for simplicity, the screen can just rebuild or we can add a boolean to initial state.
-}
-
-// A better approach is to make a structured state class, but since we are refactoring slightly,
-// we will just add a CheckBiometricsResult.
 class BiometricsReady extends LoginState {
   final bool canCheckBiometrics;
   final String? savedUsername;
@@ -41,44 +32,44 @@ class BiometricsReady extends LoginState {
 
 class LoginCubit extends Cubit<LoginState> {
   final AuthDatasource authDatasource;
-  final _storage = const FlutterSecureStorage();
+  final _storage = SecureStorageService();
   final _localAuth = LocalAuthentication();
 
   LoginCubit({required this.authDatasource}) : super(LoginInitial());
 
   Future<void> checkBiometrics() async {
     try {
-      final savedUser = await _storage.read(key: 'bio_user');
-      final savedPass = await _storage.read(key: 'bio_pass');
-      debugPrint('=== DEBUG BIOMETRICS ===');
-      debugPrint('Saved user: $savedUser');
-      debugPrint('Saved pass length: ${savedPass?.length ?? 0}');
+      final savedUser = await _storage.getBioUser();
+      final savedPass = await _storage.getBioPass();
+      Log.i('=== DEBUG BIOMETRICS ===');
+      Log.i('Saved user: $savedUser');
+      Log.i('Saved pass length: ${savedPass?.length ?? 0}');
       
       if (savedUser != null && savedPass != null) {
         final canCheck = await _localAuth.canCheckBiometrics;
         final isSupported = await _localAuth.isDeviceSupported();
-        debugPrint('canCheckBiometrics: $canCheck');
-        debugPrint('isDeviceSupported: $isSupported');
+        Log.i('canCheckBiometrics: $canCheck');
+        Log.i('isDeviceSupported: $isSupported');
         
         if (canCheck || isSupported) {
-          debugPrint('Emitting BiometricsReady(true)');
+          Log.i('Emitting BiometricsReady(true)');
           emit(BiometricsReady(true, savedUsername: savedUser));
         } else {
-          debugPrint('Biometrics not supported or not enrolled');
+          Log.i('Biometrics not supported or not enrolled');
         }
       } else {
-        debugPrint('No saved credentials for biometrics');
+        Log.i('No saved credentials for biometrics');
       }
-      debugPrint('========================');
+      Log.i('========================');
     } catch (e) {
-      debugPrint('Error checking biometrics: $e');
+      Log.e('Error checking biometrics', e);
     }
   }
 
   Future<void> loginWithBiometrics() async {
     try {
-      final savedUser = await _storage.read(key: 'bio_user');
-      final savedPass = await _storage.read(key: 'bio_pass');
+      final savedUser = await _storage.getBioUser();
+      final savedPass = await _storage.getBioPass();
 
       if (savedUser == null || savedPass == null) {
         emit(LoginFailure('No hay credenciales guardadas para la huella.'));
@@ -92,15 +83,14 @@ class LoginCubit extends Cubit<LoginState> {
       );
 
       if (authenticated) {
-        // Ejecutar login con las credenciales guardadas
         emit(LoginLoading());
         final user = await authDatasource.login(savedUser, savedPass);
         emit(LoginSuccess(user));
       }
     } catch (e) {
-      final savedUser = await _storage.read(key: 'bio_user');
+      final savedUser = await _storage.getBioUser();
+      Log.e('Error al autenticar con huella', e);
       emit(LoginFailure('Error al autenticar con huella. Intente con contraseña.'));
-      // Emitir ready nuevamente para que puedan seguir viendo el boton
       emit(BiometricsReady(true, savedUsername: savedUser));
     }
   }
@@ -110,27 +100,24 @@ class LoginCubit extends Cubit<LoginState> {
     try {
       final user = await authDatasource.login(username, password);
       
-      // Comprobar si ya tiene activado el biometría
-      final savedUser = await _storage.read(key: 'bio_user');
+      final savedUser = await _storage.getBioUser();
       final canCheck = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
       
-      // Si el dispositivo soporta y no tiene configurada la huella, sugerimos habilitarlo
       bool promptBio = canCheck && savedUser == null;
       
       emit(LoginSuccess(user, promptBiometrics: promptBio, savedUsername: username, savedPassword: password));
     } catch (e) {
+      Log.e('Error en login tradicional', e);
       emit(LoginFailure(e.toString().replaceAll('Exception: ', '')));
-      checkBiometrics(); // re-check en caso de fallo para mostrar boton
+      checkBiometrics();
     }
   }
 
   Future<void> enableBiometrics(String username, String password) async {
-    await _storage.write(key: 'bio_user', value: username);
-    await _storage.write(key: 'bio_pass', value: password);
+    await _storage.saveBioCredentials(username, password);
   }
 
   Future<void> disableBiometrics() async {
-    await _storage.delete(key: 'bio_user');
-    await _storage.delete(key: 'bio_pass');
+    await _storage.deleteBioCredentials();
   }
 }

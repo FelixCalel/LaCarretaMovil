@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../core/config/environment.dart';
 import '../../domain/pedido_model.dart';
 import '../../domain/detalle_model.dart';
 
@@ -11,7 +10,7 @@ class PedidoDetailsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final apiClient = ApiClient(baseUrl: Environment.apiBaseUrl);
+    final apiClient = ApiClient();
     return FutureBuilder(
       future: apiClient.dio.get('/detalle/pedido/listar/${pedido.id}'),
       builder: (context, snapshot) {

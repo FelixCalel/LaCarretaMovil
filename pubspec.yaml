@@ -50,10 +50,18 @@ dependencies:
   go_router: ^13.2.0
 
   # Internationalization & Formatting
-  intl: ^0.19.0
+  intl: any
   local_auth: ^3.0.2
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
+  flutter_animate: any
+  flutter_form_builder: any
+  form_builder_validators: any
+  skeletonizer: ^1.4.2
+  flutter_jailbreak_detection: any
+  connectivity_plus: any
+  shorebird_code_push: any
+  logger: any
 
   # OTA Updates & Package Info
 dev_dependencies:
@@ -67,6 +75,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

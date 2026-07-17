@@ -1,5 +1,5 @@
 import 'package:go_router/go_router.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/secure_storage_service.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/pedidos/presentation/pedidos_screen.dart';
@@ -9,12 +9,12 @@ import '../../features/produccion/presentation/produccion_screen.dart';
 import '../../features/compras/presentation/compras_screen.dart';
 
 class AppRouter {
-  static final _storage = const FlutterSecureStorage();
+  static final _storage = SecureStorageService();
 
   static final GoRouter router = GoRouter(
     initialLocation: '/login',
     redirect: (context, state) async {
-      final token = await _storage.read(key: 'access_token');
+      final token = await _storage.getAccessToken();
       final loggingIn = state.matchedLocation == '/login';
 
       if (token == null && !loggingIn) {

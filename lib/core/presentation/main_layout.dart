@@ -1,8 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import '../services/secure_storage_service.dart';
 import '../theme/theme_cubit.dart';
 import 'models/modulo_model.dart';
 import 'models/opcion_model.dart';
@@ -28,21 +33,92 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  final _storage = const FlutterSecureStorage();
+  final _storage = SecureStorageService();
   String _userName = 'Cargando...';
   String _userRole = '';
   List<ModuloModel> _groupedModules = [];
+
+  // Variables de conectividad
+  bool _isConnected = true;
+  bool _showConnectionBanner = false;
+  late final StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
+    _initConnectivityListener();
+    _checkForShorebirdUpdates();
+  }
+
+  void _initConnectivityListener() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      final hasConnection = !results.contains(ConnectivityResult.none);
+      if (hasConnection != _isConnected) {
+        setState(() {
+          _isConnected = hasConnection;
+          _showConnectionBanner = true;
+        });
+
+        // Ocultar banner de "Conectado" después de 3 segundos
+        if (hasConnection) {
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted && _isConnected) {
+              setState(() {
+                _showConnectionBanner = false;
+              });
+            }
+          });
+        }
+      }
+    });
+  }
+
+  Future<void> _checkForShorebirdUpdates() async {
+    try {
+      final updater = ShorebirdUpdater();
+      final status = await updater.checkForUpdate();
+      if (status == UpdateStatus.outdated) {
+        await updater.update();
+        if (mounted) {
+          final primaryColor = Theme.of(context).primaryColor;
+          _showUpdatePromptDialog(primaryColor);
+        }
+      }
+    } catch (e) {
+      // Ignorar de forma silenciosa
+    }
+  }
+
+  void _showUpdatePromptDialog(Color primaryColor) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Actualización disponible'),
+        content: const Text('Se ha descargado una actualización del sistema. ¿Deseas reiniciar la aplicación ahora para aplicar los cambios?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Más tarde', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              SystemNavigator.pop();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            child: const Text('Reiniciar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadUserInfo() async {
-    final name = await _storage.read(key: 'user_name') ?? 'Usuario';
-    final roleId = await _storage.read(key: 'user_role_id') ?? '';
-    final permissionsJson = await _storage.read(key: 'user_permissions') ?? '[]';
+    final name = await _storage.getUserName() ?? 'Usuario';
+    final roleId = await _storage.getUserRoleId() ?? '';
+    final permissionsJson = await _storage.getUserPermissions() ?? '[]';
 
     String role = 'Usuario';
     if (roleId == '1') {
@@ -91,7 +167,6 @@ class _MainLayoutState extends State<MainLayout> {
       //
     }
 
-    // Fallback completo para el Administrador (roleId == '1') si la respuesta de la API está vacía
     if (roleId == '1' && modules.isEmpty) {
       modules.addAll([
         ModuloModel(
@@ -165,17 +240,16 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   Future<void> _logout() async {
-    await _storage.delete(key: 'access_token');
-    await _storage.delete(key: 'refresh_token');
-    await _storage.delete(key: 'user_id');
-    await _storage.delete(key: 'user_name');
-    await _storage.delete(key: 'user_role_id');
-    await _storage.delete(key: 'user_routes');
-    await _storage.delete(key: 'user_pais_id');
-    await _storage.delete(key: 'user_permissions');
+    await _storage.clearAuthData();
     if (mounted) {
       context.go('/login');
     }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
   }
 
   @override
@@ -218,7 +292,38 @@ class _MainLayoutState extends State<MainLayout> {
         primaryColor: primaryColor,
         onLogout: _logout,
       ),
-      body: widget.body,
+      body: Column(
+        children: [
+          if (_showConnectionBanner)
+            Container(
+              width: double.infinity,
+              color: _isConnected ? Colors.green : Colors.redAccent,
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isConnected ? Icons.wifi : Icons.wifi_off,
+                      color: Colors.white,
+                      size: 16.0,
+                    ),
+                    const SizedBox(width: 8.0),
+                    Text(
+                      _isConnected ? 'Conexión restablecida' : 'Sin conexión a Internet',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ).animate().fade().slideY(begin: -0.5, end: 0, duration: 300.ms),
+          Expanded(child: widget.body),
+        ],
+      ),
       floatingActionButton: widget.floatingActionButton,
       bottomNavigationBar: _groupedModules.any((m) => m.id == 2 || m.id == 3 || m.id == 13)
           ? MainBottomNav(

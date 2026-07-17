@@ -2,19 +2,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/config/environment.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/logger_service.dart';
 import '../data/auth_datasource.dart';
 import '../../../core/network/api_client.dart';
 import 'login_cubit.dart';
-import 'widgets/floating_particles_background.dart';
+import '../../../core/presentation/widgets/floating_particles_background.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final apiClient = ApiClient(baseUrl: Environment.apiBaseUrl);
+    final apiClient = ApiClient();
     final authDatasource = AuthDatasource(apiClient: apiClient);
 
     return BlocProvider(
@@ -32,9 +35,7 @@ class _LoginScreenView extends StatefulWidget {
 }
 
 class _LoginScreenViewState extends State<_LoginScreenView> {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormBuilderState>();
   bool _obscurePassword = true;
   bool _showBiometricButton = false;
   bool _autoPromptFired = false;
@@ -47,13 +48,6 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
         context.read<LoginCubit>().checkBiometrics();
       }
     });
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   Future<void> _showBiometricPrompt(LoginSuccess state) async {
@@ -95,18 +89,18 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
     return Scaffold(
       body: BlocConsumer<LoginCubit, LoginState>(
         listener: (context, state) {
-          debugPrint('=== LOGIN SCREEN LISTENER: state is ${state.runtimeType} ===');
+          Log.i('=== LOGIN SCREEN LISTENER: state is ${state.runtimeType} ===');
           if (state is BiometricsReady) {
-            debugPrint('BiometricsReady received: canCheck=${state.canCheckBiometrics}, username=${state.savedUsername}');
+            Log.i('BiometricsReady received: canCheck=${state.canCheckBiometrics}, username=${state.savedUsername}');
             setState(() {
               _showBiometricButton = state.canCheckBiometrics;
-              if (state.savedUsername != null && _usernameController.text.isEmpty) {
-                _usernameController.text = state.savedUsername!;
-              }
             });
+            if (state.savedUsername != null) {
+              _formKey.currentState?.fields['username']?.didChange(state.savedUsername);
+            }
             // Auto prompt only once when the screen loads
             if (!_autoPromptFired && state.canCheckBiometrics) {
-              debugPrint('Auto prompting biometrics...');
+              Log.i('Auto prompting biometrics...');
               _autoPromptFired = true;
               context.read<LoginCubit>().loginWithBiometrics();
             }
@@ -135,7 +129,7 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
         builder: (context, state) {
           return Stack(
             children: [
-              // Fondo decorativo con gradiente premium en los verdes de La Carreta
+              // Fondo decorativo con gradiente premium
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -145,8 +139,9 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                   ),
                 ),
               ),
-              // Animación de frutas y verduras flotantes en segundo plano
-              const FloatingParticlesBackground(),
+              const RepaintBoundary(
+                child: FloatingParticlesBackground(),
+              ),
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
@@ -159,7 +154,7 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(24.0),
-                        child: Form(
+                        child: FormBuilder(
                           key: _formKey,
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -175,7 +170,7 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                     color: Theme.of(context).primaryColor,
                                   );
                                 },
-                              ),
+                              ).animate().fade(duration: 500.ms).scale(curve: Curves.easeOutBack),
                               const SizedBox(height: 16.0),
                               Text(
                                 'La Carreta Móvil',
@@ -184,7 +179,7 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).primaryColor,
                                 ),
-                              ),
+                              ).animate().fade(delay: 200.ms).slideY(begin: 0.2, end: 0),
                               const SizedBox(height: 8.0),
                               const Text(
                                 'Inicia sesión para continuar',
@@ -192,11 +187,12 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                   fontSize: 14.0,
                                   color: Colors.grey,
                                 ),
-                              ),
+                              ).animate().fade(delay: 300.ms).slideY(begin: 0.2, end: 0),
                               const SizedBox(height: 24.0),
-                              // Input de Usuario
-                              TextFormField(
-                                controller: _usernameController,
+                              
+                              // Input de Usuario con FormBuilder
+                              FormBuilderTextField(
+                                name: 'username',
                                 decoration: InputDecoration(
                                   labelText: 'Usuario o Correo',
                                   prefixIcon: const Icon(Icons.person_outline),
@@ -208,17 +204,15 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                       ? Colors.white.withValues(alpha: 0.05)
                                       : Colors.grey[100],
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Por favor ingresa tu usuario';
-                                  }
-                                  return null;
-                                },
-                              ),
+                                validator: FormBuilderValidators.compose([
+                                  FormBuilderValidators.required(errorText: 'Por favor ingresa tu usuario'),
+                                ]),
+                              ).animate().fade(delay: 400.ms).slideX(begin: -0.1, end: 0),
                               const SizedBox(height: 16.0),
-                              // Input de Contraseña
-                              TextFormField(
-                                controller: _passwordController,
+                              
+                              // Input de Contraseña con FormBuilder
+                              FormBuilderTextField(
+                                name: 'password',
                                 obscureText: _obscurePassword,
                                 decoration: InputDecoration(
                                   labelText: 'Contraseña',
@@ -243,14 +237,12 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                       ? Colors.white.withValues(alpha: 0.05)
                                       : Colors.grey[100],
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Por favor ingresa tu contraseña';
-                                  }
-                                  return null;
-                                },
-                              ),
+                                validator: FormBuilderValidators.compose([
+                                  FormBuilderValidators.required(errorText: 'Por favor ingresa tu contraseña'),
+                                ]),
+                              ).animate().fade(delay: 500.ms).slideX(begin: 0.1, end: 0),
                               const SizedBox(height: 24.0),
+                              
                               // Botón de Enviar
                               SizedBox(
                                 width: double.infinity,
@@ -267,10 +259,11 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                   onPressed: state is LoginLoading
                                       ? null
                                       : () {
-                                          if (_formKey.currentState!.validate()) {
+                                          if (_formKey.currentState?.saveAndValidate() ?? false) {
+                                            final vals = _formKey.currentState!.value;
                                             context.read<LoginCubit>().login(
-                                                  _usernameController.text,
-                                                  _passwordController.text,
+                                                  vals['username'],
+                                                  vals['password'],
                                                 );
                                           }
                                         },
@@ -291,8 +284,9 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                           ),
                                         ),
                                 ),
-                              ),
-                              // Botón de Huella (si está disponible)
+                              ).animate().fade(delay: 600.ms).scale(),
+                              
+                              // Botón de Huella
                               if (_showBiometricButton) ...[
                                 const SizedBox(height: 16.0),
                                 SizedBox(
@@ -317,13 +311,13 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                             context.read<LoginCubit>().loginWithBiometrics();
                                           },
                                   ),
-                                ),
+                                ).animate().fade(delay: 700.ms).scale(),
                               ],
                             ],
                           ),
                         ),
                       ),
-                    ),
+                    ).animate().fade(duration: 400.ms).slideY(begin: 0.1, end: 0),
                   ),
                 ),
               ),

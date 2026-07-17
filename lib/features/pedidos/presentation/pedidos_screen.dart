@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/config/environment.dart';
 import '../../../core/presentation/main_layout.dart';
 import '../data/pedidos_datasource.dart';
 import '../../../core/network/api_client.dart';
@@ -39,7 +39,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final apiClient = ApiClient(baseUrl: Environment.apiBaseUrl);
+    final apiClient = ApiClient();
     final datasource = PedidosDatasource(apiClient: apiClient);
 
     return BlocProvider(
@@ -69,7 +69,32 @@ class _PedidosScreenState extends State<PedidosScreen> {
         body: BlocBuilder<PedidosCubit, PedidosState>(
           builder: (context, state) {
             if (state is PedidosLoading) {
-              return const Center(child: CircularProgressIndicator());
+              final mockPedidos = List.generate(
+                5,
+                (index) => PedidoModel(
+                  id: index,
+                  creadoEl: DateTime.now(),
+                  estadoId: 1,
+                  estadoNombre: 'Pendiente',
+                  deudorId: 1,
+                  deudorNombre: 'Cargando...',
+                  tiendaId: 1,
+                  tiendaNombre: 'Cargando...',
+                ),
+              );
+              return Skeletonizer(
+                enabled: true,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(12.0),
+                  itemCount: mockPedidos.length,
+                  itemBuilder: (context, index) {
+                    return PedidoCard(
+                      pedido: mockPedidos[index],
+                      onViewDetails: () {},
+                    );
+                  },
+                ),
+              );
             } else if (state is PedidosLoaded) {
               final allPedidos = state.pedidos;
 

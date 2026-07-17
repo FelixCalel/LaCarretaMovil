@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../core/config/environment.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/presentation/main_layout.dart';
 import '../../../core/theme/app_theme.dart';
@@ -17,7 +16,7 @@ class CrearPedidoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final apiClient = ApiClient(baseUrl: Environment.apiBaseUrl);
+    final apiClient = ApiClient();
     final datasource = PedidosDatasource(apiClient: apiClient);
 
     return BlocProvider(
