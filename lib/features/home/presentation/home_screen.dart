@@ -28,9 +28,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (roleId == '1') {
       roleName = 'Administrador';
     } else if (roleId == '2') {
-      roleName = 'Supervisor';
+      roleName = 'Display';
     } else if (roleId == '3') {
-      roleName = 'Digitador';
+      roleName = 'Ventas';
     }
 
     setState(() {

@@ -117,6 +117,15 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
             } else {
               context.go('/home');
             }
+          } else if (state is Login2FARequired) {
+            context.go(
+              '/verify-otp'
+              '?target=${Uri.encodeComponent(state.maskedPhone)}'
+              '&type=login'
+              '&userId=${state.userId}'
+              '&username=${Uri.encodeComponent(state.username)}'
+              '&password=${Uri.encodeComponent(state.password)}',
+            );
           } else if (state is LoginFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -313,6 +322,19 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                   ),
                                 ).animate().fade(delay: 700.ms).scale(),
                               ],
+                              const SizedBox(height: 16.0),
+                              Column(
+                                children: [
+                                  TextButton(
+                                    onPressed: () => context.go('/recovery'),
+                                    child: const Text('¿Olvidaste tu contraseña?'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => context.go('/register'),
+                                    child: const Text('Registrarse'),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),

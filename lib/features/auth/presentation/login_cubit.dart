@@ -19,6 +19,14 @@ class LoginSuccess extends LoginState {
   LoginSuccess(this.user, {this.promptBiometrics = false, this.savedUsername = '', this.savedPassword = ''});
 }
 
+class Login2FARequired extends LoginState {
+  final int userId;
+  final String maskedPhone;
+  final String username;
+  final String password;
+  Login2FARequired({required this.userId, required this.maskedPhone, required this.username, required this.password});
+}
+
 class LoginFailure extends LoginState {
   final String error;
   LoginFailure(this.error);
@@ -84,8 +92,17 @@ class LoginCubit extends Cubit<LoginState> {
 
       if (authenticated) {
         emit(LoginLoading());
-        final user = await authDatasource.login(savedUser, savedPass);
-        emit(LoginSuccess(user));
+        final result = await authDatasource.login(savedUser, savedPass);
+        if (result is Map && result['status'] == '2fa_required') {
+          emit(Login2FARequired(
+            userId: result['userId'] as int,
+            maskedPhone: result['maskedPhone'] as String,
+            username: savedUser,
+            password: savedPass,
+          ));
+        } else if (result is UserModel) {
+          emit(LoginSuccess(result));
+        }
       }
     } catch (e) {
       final savedUser = await _storage.getBioUser();
@@ -98,14 +115,23 @@ class LoginCubit extends Cubit<LoginState> {
   Future<void> login(String username, String password) async {
     emit(LoginLoading());
     try {
-      final user = await authDatasource.login(username, password);
+      final result = await authDatasource.login(username, password);
       
-      final savedUser = await _storage.getBioUser();
-      final canCheck = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
-      
-      bool promptBio = canCheck && savedUser == null;
-      
-      emit(LoginSuccess(user, promptBiometrics: promptBio, savedUsername: username, savedPassword: password));
+      if (result is Map && result['status'] == '2fa_required') {
+        emit(Login2FARequired(
+          userId: result['userId'] as int,
+          maskedPhone: result['maskedPhone'] as String,
+          username: username,
+          password: password,
+        ));
+      } else if (result is UserModel) {
+        final savedUser = await _storage.getBioUser();
+        final canCheck = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+        
+        bool promptBio = canCheck && savedUser == null;
+        
+        emit(LoginSuccess(result, promptBiometrics: promptBio, savedUsername: username, savedPassword: password));
+      }
     } catch (e) {
       Log.e('Error en login tradicional', e);
       emit(LoginFailure(e.toString().replaceAll('Exception: ', '')));

@@ -133,9 +133,9 @@ class _MainLayoutState extends State<MainLayout> {
     if (roleId == '1') {
       role = 'Administrador';
     } else if (roleId == '2') {
-      role = 'Supervisor';
+      role = 'Display';
     } else if (roleId == '3') {
-      role = 'Digitador';
+      role = 'Ventas';
     }
 
     final List<ModuloModel> modules = [];

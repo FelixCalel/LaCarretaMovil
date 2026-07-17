@@ -67,6 +67,7 @@ dependencies:
   connectivity_plus: any
   shorebird_code_push: any
   logger: any
+  pinput: any
 
   # OTA Updates & Package Info
 dev_dependencies:
