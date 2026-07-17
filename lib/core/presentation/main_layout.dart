@@ -7,6 +7,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'notifications_cubit.dart';
+import 'widgets/notifications_bottom_sheet.dart';
 import '../services/secure_storage_service.dart';
 import '../theme/theme_cubit.dart';
 import 'models/modulo_model.dart';
@@ -49,6 +51,13 @@ class _MainLayoutState extends State<MainLayout> {
     _loadUserInfo();
     _initConnectivityListener();
     _checkForShorebirdUpdates();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final cubit = context.read<NotificationsCubit>();
+        cubit.listenToWebSocket();
+        cubit.loadNotifications();
+      }
+    });
   }
 
   void _initConnectivityListener() {
@@ -242,6 +251,7 @@ class _MainLayoutState extends State<MainLayout> {
   Future<void> _logout() async {
     await _storage.clearAuthData();
     if (mounted) {
+      context.read<NotificationsCubit>().reset();
       context.go('/login');
     }
   }
@@ -267,6 +277,50 @@ class _MainLayoutState extends State<MainLayout> {
         (themeMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
 
     actionsList.add(
+      BlocBuilder<NotificationsCubit, NotificationsState>(
+        builder: (context, state) {
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                tooltip: 'Notificaciones',
+                onPressed: () {
+                  _showNotificationsBottomSheet(context);
+                },
+              ),
+              if (state.unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '${state.unreadCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ).animate().scale(delay: 200.ms, duration: 300.ms),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+
+    actionsList.add(
       IconButton(
         icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
         tooltip: isDark ? 'Modo Claro' : 'Modo Oscuro',
@@ -276,62 +330,145 @@ class _MainLayoutState extends State<MainLayout> {
       ),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: actionsList,
-      ),
-      drawer: MainDrawer(
-        userName: _userName,
-        userRole: _userRole,
-        groupedModules: _groupedModules,
-        location: location,
-        primaryColor: primaryColor,
-        onLogout: _logout,
-      ),
-      body: Column(
-        children: [
-          if (_showConnectionBanner)
-            Container(
-              width: double.infinity,
-              color: _isConnected ? Colors.green : Colors.redAccent,
-              padding: const EdgeInsets.symmetric(vertical: 6.0),
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isConnected ? Icons.wifi : Icons.wifi_off,
-                      color: Colors.white,
-                      size: 16.0,
-                    ),
-                    const SizedBox(width: 8.0),
-                    Text(
-                      _isConnected ? 'Conexión restablecida' : 'Sin conexión a Internet',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+    return BlocListener<NotificationsCubit, NotificationsState>(
+      listenWhen: (previous, current) =>
+          current.lastNewNotification != null &&
+          current.lastNewNotification != previous.lastNewNotification,
+      listener: (context, state) {
+        final notif = state.lastNewNotification!;
+        context.read<NotificationsCubit>().clearLastNewNotification();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: notif.tipo == 'success'
+                ? Colors.green.shade800
+                : notif.tipo == 'error'
+                    ? Colors.red.shade800
+                    : notif.tipo == 'warning'
+                        ? Colors.orange.shade800
+                        : Theme.of(context).primaryColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(12),
+            content: Row(
+              children: [
+                Icon(
+                  notif.tipo == 'success'
+                      ? Icons.check_circle
+                      : notif.tipo == 'error'
+                          ? Icons.error
+                          : notif.tipo == 'warning'
+                              ? Icons.warning
+                              : Icons.info,
+                  color: Colors.white,
                 ),
-              ),
-            ).animate().fade().slideY(begin: -0.5, end: 0, duration: 300.ms),
-          Expanded(child: widget.body),
-        ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        notif.titulo,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text(
+                        notif.mensaje,
+                        style: const TextStyle(fontSize: 12, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            action: SnackBarAction(
+              label: 'Ver',
+              textColor: Colors.white,
+              onPressed: () {
+                if (notif.pedidoId != null) {
+                  context.go('/historialPedido/listar');
+                }
+              },
+            ),
+          ),
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          actions: actionsList,
+        ),
+        drawer: MainDrawer(
+          userName: _userName,
+          userRole: _userRole,
+          groupedModules: _groupedModules,
+          location: location,
+          primaryColor: primaryColor,
+          onLogout: _logout,
+        ),
+        body: Column(
+          children: [
+            if (_showConnectionBanner)
+              Container(
+                width: double.infinity,
+                color: _isConnected ? Colors.green : Colors.redAccent,
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isConnected ? Icons.wifi : Icons.wifi_off,
+                        color: Colors.white,
+                        size: 16.0,
+                      ),
+                      const SizedBox(width: 8.0),
+                      Text(
+                        _isConnected ? 'Conexión restablecida' : 'Sin conexión a Internet',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animate().fade().slideY(begin: -0.5, end: 0, duration: 300.ms),
+            Expanded(child: widget.body),
+          ],
+        ),
+        floatingActionButton: widget.floatingActionButton,
+        bottomNavigationBar: _groupedModules.any((m) => m.id == 2 || m.id == 3 || m.id == 13)
+            ? MainBottomNav(
+                groupedModules: _groupedModules,
+                location: location,
+                primaryColor: primaryColor,
+              )
+            : null,
       ),
-      floatingActionButton: widget.floatingActionButton,
-      bottomNavigationBar: _groupedModules.any((m) => m.id == 2 || m.id == 3 || m.id == 13)
-          ? MainBottomNav(
-              groupedModules: _groupedModules,
-              location: location,
-              primaryColor: primaryColor,
-            )
-          : null,
+    );
+  }
+
+  void _showNotificationsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          builder: (_, scrollController) {
+            return NotificationsBottomSheet(scrollController: scrollController);
+          },
+        );
+      },
     );
   }
 }
+
