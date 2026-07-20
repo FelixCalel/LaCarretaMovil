@@ -187,12 +187,29 @@ class DraftPedidoCard extends StatelessWidget {
                                   onUpdateQuantity(d, d.cantidad - 1),
                             ),
                             const SizedBox(width: 6.0),
-                            Text(
-                              '${d.cantidad}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15.0,
-                                color: sectionTextColor,
+                            GestureDetector(
+                              onTap: () => _showQuantityEditDialog(context, d),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                  vertical: 4.0,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6.0),
+                                  border: Border.all(
+                                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${d.cantidad}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15.0,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6.0),
@@ -292,6 +309,43 @@ class DraftPedidoCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  void _showQuantityEditDialog(BuildContext context, DetalleModel detail) {
+    final controller = TextEditingController(text: '${detail.cantidad}');
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Editar Cantidad'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Ingrese la cantidad',
+              labelText: 'Cantidad',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                final val = int.tryParse(controller.text);
+                if (val != null && val > 0) {
+                  onUpdateQuantity(detail, val);
+                }
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

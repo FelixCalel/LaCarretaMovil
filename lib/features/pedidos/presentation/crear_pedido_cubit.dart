@@ -32,7 +32,7 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
               if (isExpanded) {
                 try {
                   final pedido = state.draftPedidos.firstWhere((p) => p.id == pedidoId);
-                  loadPedidoDetails(pedidoId, pedido.deudorId);
+                  loadPedidoDetails(pedidoId, pedido.deudorId, isSilent: true);
                 } catch (_) {}
               }
             }
@@ -87,10 +87,12 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
     }
   }
 
-  Future<void> loadPedidoDetails(int pedidoId, int deudorId) async {
-    final loading = Map<int, bool>.from(state.loadingDetails);
-    loading[pedidoId] = true;
-    emit(state.copyWith(loadingDetails: loading));
+  Future<void> loadPedidoDetails(int pedidoId, int deudorId, {bool isSilent = false}) async {
+    if (!isSilent) {
+      final loading = Map<int, bool>.from(state.loadingDetails);
+      loading[pedidoId] = true;
+      emit(state.copyWith(loadingDetails: loading));
+    }
 
     try {
       final detalles = await datasource.getPedidoDetalles(pedidoId)
@@ -110,9 +112,11 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
     } catch (e) {
       emit(state.copyWith(error: 'Error cargando detalles del pedido $pedidoId: $e'));
     } finally {
-      final newLoading = Map<int, bool>.from(state.loadingDetails);
-      newLoading[pedidoId] = false;
-      emit(state.copyWith(loadingDetails: newLoading));
+      if (!isSilent) {
+        final newLoading = Map<int, bool>.from(state.loadingDetails);
+        newLoading[pedidoId] = false;
+        emit(state.copyWith(loadingDetails: newLoading));
+      }
     }
   }
 
@@ -153,10 +157,21 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
   }
 
   Future<void> deleteItem(int pedidoId, DetalleModel detail) async {
+    // Optimistic Update
+    final detailsMap = Map<int, List<DetalleModel>>.from(state.pedidoDetalles);
+    final detailsList = detailsMap[pedidoId];
+    if (detailsList != null) {
+      final newList = List<DetalleModel>.from(detailsList)..removeWhere((d) => d.id == detail.id);
+      detailsMap[pedidoId] = newList;
+      emit(state.copyWith(pedidoDetalles: detailsMap));
+    }
+
     try {
       await datasource.deleteItem(detail.id);
-      await loadPedidoDetails(pedidoId, detail.pedidoId);
+      await loadPedidoDetails(pedidoId, detail.pedidoId, isSilent: true);
     } catch (e) {
+      // Revertir recargando desde API
+      await loadPedidoDetails(pedidoId, detail.pedidoId);
       emit(state.copyWith(error: 'Error al eliminar producto: $e'));
     }
   }
@@ -186,7 +201,7 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
       );
 
       selectProduct(pedidoId, null);
-      await loadPedidoDetails(pedidoId, deudorId);
+      await loadPedidoDetails(pedidoId, deudorId, isSilent: true);
     } catch (e) {
       emit(state.copyWith(error: 'Error al agregar producto: $e'));
     }

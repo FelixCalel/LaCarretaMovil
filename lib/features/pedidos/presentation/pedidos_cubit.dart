@@ -32,13 +32,15 @@ class PedidosCubit extends Cubit<PedidosState> {
     _wsSubscription = NotificationService().wsEvents.listen((event) {
       final type = event['type'];
       if (type == 'on-order-status-changed') {
-        fetchPedidos();
+        fetchPedidos(isSilent: true);
       }
     });
   }
 
-  Future<void> fetchPedidos() async {
-    emit(PedidosLoading());
+  Future<void> fetchPedidos({bool isSilent = false}) async {
+    if (!isSilent || state is! PedidosLoaded) {
+      emit(PedidosLoading());
+    }
     try {
       final list = await datasource.getPedidos();
       emit(PedidosLoaded(list));
