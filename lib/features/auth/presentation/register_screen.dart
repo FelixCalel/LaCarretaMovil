@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/logger_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/presentation/widgets/floating_particles_background.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -35,9 +36,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if ((correo == null || correo.isEmpty) && (telefono == null || telefono.isEmpty)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Debe proporcionar correo o teléfono.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Debe proporcionar correo o teléfono.'),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
         setState(() {
@@ -64,9 +67,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Usuario registrado exitosamente.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Usuario registrado exitosamente.'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
 
@@ -74,9 +79,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context.go('/verify-otp?target=${Uri.encodeComponent(telefono)}&type=register');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Por favor, revise su correo para validar su cuenta.'),
-              backgroundColor: Colors.blue,
+            SnackBar(
+              content: const Text('Por favor, revise su correo para validar su cuenta.'),
+              backgroundColor: AppTheme.accentColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           );
           context.go('/login');
@@ -86,8 +93,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al registrar. Verifique los datos o si ya existe.'),
-            backgroundColor: Colors.red,
+            content: const Text('Error al registrar. Verifique los datos o si ya existe.'),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
       } finally {
@@ -103,104 +112,141 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final primaryColor = Theme.of(context).primaryColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Stack(
         children: [
-          const FloatingParticlesBackground(),
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
-              child: Card(
-                elevation: 12,
-                shadowColor: Colors.black26,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF031604), const Color(0xFF09290B), const Color(0xFF0B132B)]
+                    : [AppTheme.primaryDarkColor, AppTheme.primaryColor, AppTheme.primaryLightColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          const RepaintBoundary(
+            child: FloatingParticlesBackground(),
+          ),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
                 child: Container(
-                  width: size.width > 500 ? 450 : size.width * 0.9,
-                  padding: const EdgeInsets.all(32.0),
+                  width: size.width > 500 ? 460 : size.width * 0.9,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkCardColor : Colors.white,
+                    borderRadius: BorderRadius.circular(28.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 24.0,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(28.0),
                   child: FormBuilder(
                     key: _formKey,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 80,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.local_shipping,
-                            size: 60,
-                            color: primaryColor,
+                        Container(
+                          padding: const EdgeInsets.all(14.0),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          ),
+                          child: Image.asset(
+                            'assets/images/LogoLaCarreta.png',
+                            height: 70.0,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.person_add_alt_1_rounded,
+                              size: 48,
+                              color: Theme.of(context).primaryColor,
+                            ),
                           ),
                         ).animate().fade(duration: 400.ms).scale(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Text(
                           'Crear Cuenta',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: primaryColor,
+                            letterSpacing: -0.5,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Completa tus datos para empezar',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                           ),
                         ),
                         const SizedBox(height: 24),
-                        FormBuilderTextField(
-                          name: 'nombre',
-                          decoration: InputDecoration(
-                            labelText: 'Nombre',
-                            prefixIcon: const Icon(Icons.person_outline),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        
+                        // Campos de texto
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FormBuilderTextField(
+                                name: 'nombre',
+                                decoration: const InputDecoration(
+                                  labelText: 'Nombre',
+                                  prefixIcon: Icon(Icons.person_outline_rounded),
+                                ),
+                                validator: FormBuilderValidators.required(
+                                  errorText: 'Obligatorio',
+                                ),
+                              ),
                             ),
-                          ),
-                          validator: FormBuilderValidators.required(
-                            errorText: 'El nombre es obligatorio.',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        FormBuilderTextField(
-                          name: 'apellido',
-                          decoration: InputDecoration(
-                            labelText: 'Apellido',
-                            prefixIcon: const Icon(Icons.person_outline),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FormBuilderTextField(
+                                name: 'apellido',
+                                decoration: const InputDecoration(
+                                  labelText: 'Apellido',
+                                  prefixIcon: Icon(Icons.person_outline_rounded),
+                                ),
+                                validator: FormBuilderValidators.required(
+                                  errorText: 'Obligatorio',
+                                ),
+                              ),
                             ),
-                          ),
-                          validator: FormBuilderValidators.required(
-                            errorText: 'El apellido es obligatorio.',
-                          ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         FormBuilderTextField(
                           name: 'correo',
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Correo electrónico',
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            prefixIcon: Icon(Icons.email_outlined),
                           ),
                           validator: FormBuilderValidators.compose([
                             FormBuilderValidators.email(
-                              errorText: 'Ingrese un correo válido.',
+                              errorText: 'Ingrese un correo válido',
                             ),
                           ]),
                         ),
                         const SizedBox(height: 16),
                         FormBuilderTextField(
                           name: 'telefono',
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Teléfono',
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            prefixIcon: Icon(Icons.phone_outlined),
                           ),
                           validator: FormBuilderValidators.compose([
                             FormBuilderValidators.numeric(
-                              errorText: 'Ingrese un número válido.',
+                              errorText: 'Ingrese un número válido',
                             ),
                           ]),
                         ),
@@ -210,10 +256,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Contraseña',
-                            prefixIcon: const Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -221,17 +267,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 });
                               },
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
                           ),
                           validator: FormBuilderValidators.compose([
                             FormBuilderValidators.required(
-                              errorText: 'La contraseña es obligatoria.',
+                              errorText: 'La contraseña es obligatoria',
                             ),
                             FormBuilderValidators.minLength(
                               6,
-                              errorText: 'Mínimo 6 caracteres.',
+                              errorText: 'Mínimo 6 caracteres',
                             ),
                           ]),
                         ),
@@ -239,12 +282,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         FormBuilderDropdown<String>(
                           name: 'verificationMethod',
                           initialValue: 'sms',
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Método de Verificación',
-                            prefixIcon: const Icon(Icons.verified_user_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            prefixIcon: Icon(Icons.verified_user_outlined),
                           ),
                           onChanged: (val) {
                             setState(() {
@@ -252,20 +292,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             });
                           },
                           items: const [
-                            DropdownMenuItem(value: 'sms', child: Text('SMS')),
-                            DropdownMenuItem(value: 'email', child: Text('Email')),
+                            DropdownMenuItem(value: 'sms', child: Text('SMS (Código al celular)')),
+                            DropdownMenuItem(value: 'email', child: Text('Email (Enlace de activación)')),
                           ],
                         ),
                         const SizedBox(height: 24),
+                        
                         SizedBox(
                           width: double.infinity,
-                          height: 50,
+                          height: 54,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _submitRegister,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
                             child: _isLoading

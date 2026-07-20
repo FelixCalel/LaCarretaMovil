@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/logger_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/presentation/widgets/floating_particles_background.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -37,9 +38,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
       if (nuevaClave != confirmarClave) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Las contraseñas no coinciden.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Las contraseñas no coinciden.'),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
         setState(() {
@@ -49,7 +52,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       }
 
       try {
-        Log.i('📤 Enviando restablecimiento de contraseña...');
+        Log.i('Enviando restablecimiento de contraseña...');
         await ApiClient().dio.post('/usuarios/cambiar-clave-sms', data: {
           'token': widget.token,
           'nuevaClave': nuevaClave,
@@ -57,19 +60,23 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Contraseña reestablecida con éxito. Inicie sesión con su nueva contraseña.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Contraseña reestablecida con éxito. Inicie sesión con su nueva contraseña.'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
         context.go('/login');
       } catch (e) {
-        Log.e('❌ Error en restablecimiento de contraseña', e);
+        Log.e('Error en restablecimiento de contraseña', e);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al cambiar la contraseña. Su token podría haber expirado.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Error al cambiar la contraseña. Su token podría haber expirado.'),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
       } finally {
@@ -85,32 +92,60 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
       body: Stack(
         children: [
-          const FloatingParticlesBackground(),
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Card(
-                elevation: 12,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF031604), const Color(0xFF09290B), const Color(0xFF0B132B)]
+                    : [AppTheme.primaryDarkColor, AppTheme.primaryColor, AppTheme.primaryLightColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          const RepaintBoundary(
+            child: FloatingParticlesBackground(),
+          ),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Container(
-                  width: size.width > 500 ? 450 : size.width * 0.9,
+                  width: size.width > 500 ? 460 : size.width * 0.9,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkCardColor : Colors.white,
+                    borderRadius: BorderRadius.circular(28.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 24.0,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
                   padding: const EdgeInsets.all(32.0),
                   child: FormBuilder(
                     key: _formKey,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.lock_reset_outlined,
-                          size: 60,
-                          color: primaryColor,
+                        Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: primaryColor.withValues(alpha: 0.1),
+                          ),
+                          child: Icon(
+                            Icons.password_rounded,
+                            size: 52,
+                            color: primaryColor,
+                          ),
                         ).animate().fade(duration: 400.ms).scale(),
                         const SizedBox(height: 16),
                         const Text(
@@ -118,13 +153,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Text(
-                          'Ingrese y confirme su nueva contraseña de acceso.',
+                          'Ingrese y confirme su nueva clave de acceso.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(
+                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            fontSize: 13.5,
+                          ),
                         ),
                         const SizedBox(height: 24),
                         FormBuilderTextField(
@@ -132,19 +171,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           obscureText: _obscurePassword1,
                           decoration: InputDecoration(
                             labelText: 'Nueva Contraseña',
-                            prefixIcon: const Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword1 ? Icons.visibility_off : Icons.visibility,
+                                _obscurePassword1 ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                               ),
                               onPressed: () {
                                 setState(() {
                                   _obscurePassword1 = !_obscurePassword1;
                                 });
                               },
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           validator: FormBuilderValidators.compose([
@@ -163,19 +199,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           obscureText: _obscurePassword2,
                           decoration: InputDecoration(
                             labelText: 'Confirmar Contraseña',
-                            prefixIcon: const Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword2 ? Icons.visibility_off : Icons.visibility,
+                                _obscurePassword2 ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                               ),
                               onPressed: () {
                                 setState(() {
                                   _obscurePassword2 = !_obscurePassword2;
                                 });
                               },
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           validator: FormBuilderValidators.compose([
@@ -184,16 +217,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             ),
                           ]),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 28),
                         SizedBox(
                           width: double.infinity,
-                          height: 50,
+                          height: 54,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _submitReset,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
                             child: _isLoading

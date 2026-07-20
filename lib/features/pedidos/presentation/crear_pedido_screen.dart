@@ -63,7 +63,14 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Realizar Pedido'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
+              title: const Row(
+                children: [
+                  Icon(Icons.send_rounded, color: AppTheme.primaryColor),
+                  SizedBox(width: 10),
+                  Text('Realizar Pedido'),
+                ],
+              ),
               content: Form(
                 key: formKey,
                 child: Column(
@@ -74,7 +81,7 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
                       readOnly: true,
                       decoration: const InputDecoration(
                         labelText: 'Fecha de Entrega',
-                        suffixIcon: Icon(Icons.calendar_today),
+                        suffixIcon: Icon(Icons.calendar_month_rounded),
                       ),
                       onTap: () async {
                         final picked = await showDatePicker(
@@ -96,6 +103,7 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
                       controller: commentController,
                       decoration: const InputDecoration(
                         labelText: 'Comentario / Observaciones',
+                        hintText: 'Instrucciones especiales...',
                       ),
                       maxLines: 2,
                     ),
@@ -103,7 +111,10 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
                   style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
@@ -129,14 +140,18 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
         title: const Text('Eliminar Borrador'),
         content: const Text('¿Está seguro de que desea eliminar este borrador de pedido?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Eliminar'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -153,7 +168,7 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
       isScrollControlled: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
       ),
       builder: (modalContext) {
         return CrearPedidoModal(
@@ -190,13 +205,23 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
       listener: (context, state) {
         if (state.error != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.error!), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(state.error!),
+              backgroundColor: AppTheme.errorColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
           );
           context.read<CrearPedidoCubit>().clearError();
         }
         if (state.successMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.successMessage!), backgroundColor: Colors.green),
+            SnackBar(
+              content: Text(state.successMessage!),
+              backgroundColor: AppTheme.successColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
           );
           context.read<CrearPedidoCubit>().clearSuccess();
         }
@@ -264,10 +289,12 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
                           },
                         ),
                       ),
-            floatingActionButton: FloatingActionButton(
+            floatingActionButton: FloatingActionButton.extended(
               onPressed: () => _showCrearPedidoModal(context, state),
               backgroundColor: AppTheme.primaryColor,
-              child: const Icon(Icons.add, color: Colors.white),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Nuevo Pedido', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           );
         },

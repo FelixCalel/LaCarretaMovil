@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class PedidosFilterPanel extends StatelessWidget {
   final String? selectedDeudor;
@@ -28,7 +29,8 @@ class PedidosFilterPanel extends StatelessWidget {
 
   Widget _buildFilterChip(
     BuildContext context, {
-    required String hint,
+    required String label,
+    required IconData icon,
     required String? value,
     required List<String> options,
     required ValueChanged<String?> onChanged,
@@ -38,64 +40,76 @@ class PedidosFilterPanel extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      padding: const EdgeInsets.only(left: 10.0, right: 8.0),
+      height: 38.0,
       decoration: BoxDecoration(
         color: isSelected
-            ? primaryColor.withValues(alpha: 0.1)
-            : (isDark ? Colors.grey.shade800 : Colors.grey.shade100),
+            ? primaryColor.withValues(alpha: 0.15)
+            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
         borderRadius: BorderRadius.circular(20.0),
         border: Border.all(
           color: isSelected
               ? primaryColor
-              : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+          width: isSelected ? 1.5 : 1.0,
         ),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          hint: Text(
-            hint,
-            style: TextStyle(
-              fontSize: 12.0,
-              fontWeight: FontWeight.w500,
-              color: isSelected ? primaryColor : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16.0,
+            color: isSelected
+                ? primaryColor
+                : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+          ),
+          const SizedBox(width: 6.0),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              hint: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? primaryColor : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                ),
+              ),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? primaryColor : (isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary),
+              ),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: isSelected ? primaryColor : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                size: 18,
+              ),
+              items: options
+                  .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                  .toList(),
+              onChanged: onChanged,
             ),
           ),
-          style: TextStyle(
-            fontSize: 12.0,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? primaryColor : (isDark ? Colors.white : Colors.black87),
-          ),
-          icon: Icon(
-            Icons.arrow_drop_down,
-            color: isSelected ? primaryColor : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-            size: 18,
-          ),
-          items: options
-              .map((val) => DropdownMenuItem(value: val, child: Text(val)))
-              .toList(),
-          onChanged: onChanged,
-        ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12.0,
-        vertical: 8.0,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4.0,
-            offset: const Offset(0, 2),
+        color: isDark ? AppTheme.darkCardColor : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
           ),
-        ],
+        ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -103,7 +117,8 @@ class PedidosFilterPanel extends StatelessWidget {
           children: [
             _buildFilterChip(
               context,
-              hint: 'Cliente',
+              label: 'Cliente',
+              icon: Icons.person_outline_rounded,
               value: selectedDeudor,
               options: deudores,
               onChanged: onDeudorChanged,
@@ -111,7 +126,8 @@ class PedidosFilterPanel extends StatelessWidget {
             const SizedBox(width: 8.0),
             _buildFilterChip(
               context,
-              hint: 'Tienda',
+              label: 'Tienda',
+              icon: Icons.storefront_rounded,
               value: selectedTienda,
               options: tiendas,
               onChanged: onTiendaChanged,
@@ -119,7 +135,8 @@ class PedidosFilterPanel extends StatelessWidget {
             const SizedBox(width: 8.0),
             _buildFilterChip(
               context,
-              hint: 'Estado',
+              label: 'Estado',
+              icon: Icons.flag_outlined,
               value: selectedEstado,
               options: estados,
               onChanged: onEstadoChanged,
@@ -128,14 +145,21 @@ class PedidosFilterPanel extends StatelessWidget {
                 selectedTienda != null ||
                 selectedEstado != null) ...[
               const SizedBox(width: 8.0),
-              IconButton(
-                icon: const Icon(
-                  Icons.clear,
-                  color: Colors.redAccent,
-                  size: 20.0,
+              InkWell(
+                onTap: onClearFilters,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(7.0),
+                  decoration: BoxDecoration(
+                    color: AppTheme.errorColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: AppTheme.errorColor,
+                    size: 18.0,
+                  ),
                 ),
-                tooltip: 'Limpiar Filtros',
-                onPressed: onClearFilters,
               ),
             ],
           ],

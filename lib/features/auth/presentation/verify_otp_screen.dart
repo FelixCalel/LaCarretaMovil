@@ -7,6 +7,7 @@ import 'package:local_auth/local_auth.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/services/secure_storage_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/presentation/widgets/floating_particles_background.dart';
 import '../data/auth_datasource.dart';
 
@@ -39,7 +40,6 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Verificar portapapeles al iniciar la pantalla
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkClipboard();
     });
@@ -71,9 +71,11 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
           });
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Código OTP detectado y copiado automáticamente'),
-                backgroundColor: Colors.green,
+              SnackBar(
+                content: const Text('Código OTP detectado y copiado automáticamente'),
+                backgroundColor: AppTheme.successColor,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
             );
           }
@@ -93,7 +95,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
 
     try {
       if (widget.type == 'login') {
-        Log.i('📤 Verificando OTP de Login 2FA para usuario: ${widget.userId}');
+        Log.i('Validando OTP de Login 2FA: ${widget.userId}');
         final authDatasource = AuthDatasource(apiClient: ApiClient());
         final user = await authDatasource.verifyLogin2FA(int.parse(widget.userId!), code);
 
@@ -102,7 +104,9 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('¡Bienvenido, ${user.nombre}!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
 
@@ -113,21 +117,21 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
 
         if (canCheck && savedUser == null && widget.username != null && widget.password != null) {
           if (!mounted) return;
-          final primaryColor = Theme.of(context).primaryColor;
           final enableBio = await showDialog<bool>(
             context: context,
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
               title: const Text('Inicio Rápido'),
-              content: const Text('¿Deseas habilitar el inicio de sesión con huella dactilar o reconocimiento facial para la próxima vez?'),
+              content: const Text('¿Deseas habilitar el inicio de sesión con huella dactilar o reconocimiento facial?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('No, gracias', style: TextStyle(color: Colors.grey)),
+                  child: const Text('Ahora no', style: TextStyle(color: Colors.grey)),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
                   child: const Text('Habilitar', style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -138,7 +142,11 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
             await storage.saveBioCredentials(widget.username!, widget.password!);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Huella habilitada correctamente'), backgroundColor: Colors.green),
+                const SnackBar(
+                  content: Text('Huella habilitada correctamente'),
+                  backgroundColor: AppTheme.successColor,
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
             }
           }
@@ -148,7 +156,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
           context.go('/home');
         }
       } else if (widget.type == 'register') {
-        Log.i('📤 Verificando OTP registro para teléfono ${widget.target}: $code');
+        Log.i('Validando OTP teléfono ${widget.target}: $code');
         await ApiClient().dio.post('/usuarios/verify-phone', data: {
           'telefono': widget.target,
           'code': code,
@@ -157,15 +165,16 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cuenta verificada con éxito. Ya puedes iniciar sesión.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Cuenta verificada con éxito. Ya puedes iniciar sesión.'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
         context.go('/login');
       } else {
-        // Recovery
-        Log.i('📤 Verificando OTP recuperación para teléfono ${widget.target}: $code');
+        Log.i('Validando OTP recuperación para teléfono ${widget.target}: $code');
         final response = await ApiClient().dio.post('/usuarios/verificar-clave-sms', data: {
           'telefono': widget.target,
           'code': code,
@@ -179,20 +188,24 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Código verificado con éxito.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Código verificado con éxito.'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
         context.go('/reset-password?token=${Uri.encodeComponent(token)}');
       }
     } catch (e) {
-      Log.e('❌ Error en verificación OTP', e);
+      Log.e('Error en verificación OTP', e);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Código incorrecto o expirado. Intente de nuevo.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Código incorrecto o expirado. Intente de nuevo.'),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
       _pinController.clear();
@@ -209,49 +222,78 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
 
     final defaultPinTheme = PinTheme(
-      width: 48,
-      height: 48,
+      width: 50,
+      height: 54,
       textStyle: TextStyle(
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: FontWeight.bold,
-        color: primaryColor,
+        color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
       ),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade400),
-        borderRadius: BorderRadius.circular(8),
+        color: isDark ? const Color(0xFF131C38) : const Color(0xFFF1F5F9),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+        borderRadius: BorderRadius.circular(14),
       ),
     );
 
     final focusedPinTheme = defaultPinTheme.copyDecorationWith(
       border: Border.all(color: primaryColor, width: 2),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(14),
     );
 
     return Scaffold(
       body: Stack(
         children: [
-          const FloatingParticlesBackground(),
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Card(
-                elevation: 12,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF031604), const Color(0xFF09290B), const Color(0xFF0B132B)]
+                    : [AppTheme.primaryDarkColor, AppTheme.primaryColor, AppTheme.primaryLightColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          const RepaintBoundary(
+            child: FloatingParticlesBackground(),
+          ),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Container(
-                  width: size.width > 500 ? 450 : size.width * 0.9,
+                  width: size.width > 500 ? 460 : size.width * 0.9,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkCardColor : Colors.white,
+                    borderRadius: BorderRadius.circular(28.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 24.0,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
                   padding: const EdgeInsets.all(32.0),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.sms_outlined,
-                        size: 60,
-                        color: primaryColor,
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: primaryColor.withValues(alpha: 0.1),
+                        ),
+                        child: Icon(
+                          Icons.mark_email_read_rounded,
+                          size: 52,
+                          color: primaryColor,
+                        ),
                       ).animate().fade(duration: 400.ms).scale(),
                       const SizedBox(height: 16),
                       const Text(
@@ -259,20 +301,24 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: -0.5,
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Hemos enviado un código de 6 dígitos al número:',
+                        'Hemos enviado un código de 6 dígitos al destino:',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey.shade600),
+                        style: TextStyle(
+                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         widget.target,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: primaryColor,
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -285,24 +331,19 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
                         focusedPinTheme: focusedPinTheme,
                         hapticFeedbackType: HapticFeedbackType.lightImpact,
                         onCompleted: (pin) => _verifyCode(pin),
-                        validator: (value) {
-                          if (value == null || value.length < 6) {
-                            return 'Ingrese los 6 dígitos.';
-                          }
-                          return null;
-                        },
                       ),
                       const SizedBox(height: 32),
                       if (_isLoading)
                         const CircularProgressIndicator()
                       else ...[
-                        TextButton(
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.paste_rounded, size: 20),
+                          label: const Text('Pegar del Portapapeles'),
                           onPressed: () {
-                            Clipboard.setData(const ClipboardData(text: ''));
                             _checkClipboard();
                           },
-                          child: const Text('Re-verificar Portapapeles'),
                         ),
+                        const SizedBox(height: 8),
                         TextButton(
                           onPressed: () => context.go('/login'),
                           child: const Text('Regresar al Login'),

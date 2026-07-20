@@ -36,7 +36,6 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
   @override
   void initState() {
     super.initState();
-    // Filter tiendas by country first if a valid country ID is provided
     final baseTiendas = widget.tiendas.where((t) {
       if (widget.userPaisId != 0 && t.paisId != widget.userPaisId) {
         return false;
@@ -44,18 +43,10 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
       return true;
     }).toList();
 
-    debugPrint('DEBUG: userRoutes=${widget.userRoutes}');
-    if (baseTiendas.isNotEmpty) {
-      debugPrint('DEBUG: First tienda name="${baseTiendas.first.nombre}" rutaId=${baseTiendas.first.rutaId}');
-      debugPrint('DEBUG: baseTiendas rutaIds=${baseTiendas.map((t) => t.rutaId).toSet().toList()}');
-    }
-
-    // Filter into assigned vs unassigned
     assignedTiendas = baseTiendas
         .where((t) => widget.userRoutes.contains(t.rutaId))
         .toList();
     unassignedTiendas = baseTiendas;
-    debugPrint('DEBUG: assignedTiendas count=${assignedTiendas.length}, unassignedTiendas count=${unassignedTiendas.length}');
   }
 
   CatalogTienda? getSelectedTienda() {
@@ -84,27 +75,26 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
 
     final hasSelection = selectedTienda != null;
 
-    // Define colors for high-contrast premium UI
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final assignedActiveColor = const Color(0xFF025205); // Dark Green
-    final assignedBgColor = isDark ? const Color(0xFF0A2E0C) : const Color(0xFFE8F5E9);
+    final assignedActiveColor = AppTheme.primaryColor;
+    final assignedBgColor = isDark ? const Color(0xFF09290B) : const Color(0xFFF0FDF4);
 
-    final unassignedActiveColor = const Color(0xFFD35400); // Orange
-    final unassignedBgColor = isDark ? const Color(0xFF381A08) : const Color(0xFFFFF3E0);
+    final unassignedActiveColor = const Color(0xFFD97706);
+    final unassignedBgColor = isDark ? const Color(0xFF321A04) : const Color(0xFFFFFBEB);
 
-    final disabledBgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final disabledBorderColor = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+    final disabledBgColor = isDark ? const Color(0xFF131C38) : const Color(0xFFF1F5F9);
+    final disabledBorderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-    final normalTextColor = isDark ? Colors.white : const Color(0xFF1E293B);
-    final disabledTextColor = isDark ? Colors.grey.shade400 : const Color(0xFF475569);
+    final normalTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final disabledTextColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
-        top: 24.0,
-        left: 24.0,
-        right: 24.0,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
+        top: 12.0,
+        left: 20.0,
+        right: 20.0,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -114,54 +104,51 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Agregar Pedido',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : AppTheme.primaryDarkColor,
-                    ),
+                'Agregar Nuevo Pedido',
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                  color: isDark ? AppTheme.darkTextPrimary : AppTheme.primaryDarkColor,
+                ),
               ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
-          const Divider(),
-          const SizedBox(height: 20.0),
+          const SizedBox(height: 16.0),
 
-          // Tiendas Asignadas (Dropdown)
+          // Tiendas Asignadas (Dropdown M3)
           DropdownButtonFormField<int>(
             isExpanded: true,
-            dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+            dropdownColor: isDark ? AppTheme.darkCardColor : Colors.white,
             style: TextStyle(
               color: isTiendaAsignadaDisabled ? disabledTextColor : normalTextColor,
-              fontSize: 15.0,
-              fontWeight: FontWeight.w500,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
-              labelText: 'Tiendas asignadas',
+              labelText: 'Tiendas Asignadas (Ruta activa)',
               labelStyle: TextStyle(
                 color: isTiendaAsignadaDisabled ? Colors.grey : assignedActiveColor,
                 fontWeight: FontWeight.bold,
               ),
               prefixIcon: Icon(
-                Icons.store,
+                Icons.store_rounded,
                 color: isTiendaAsignadaDisabled ? Colors.grey : assignedActiveColor,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(16.0),
                 borderSide: BorderSide(
                   color: isTiendaAsignadaDisabled ? disabledBorderColor : assignedActiveColor,
-                  width: 2.0,
+                  width: 1.5,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(16.0),
                 borderSide: BorderSide(color: assignedActiveColor, width: 2.0),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
-                borderSide: BorderSide(color: disabledBorderColor, width: 1.0),
               ),
               filled: true,
               fillColor: isTiendaAsignadaDisabled ? disabledBgColor : assignedBgColor,
@@ -187,41 +174,37 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
                     });
                   },
           ),
-          const SizedBox(height: 20.0),
+          const SizedBox(height: 16.0),
 
-          // Tiendas NO asignadas (Dropdown)
+          // Tiendas NO asignadas (Dropdown M3)
           DropdownButtonFormField<int>(
             isExpanded: true,
-            dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+            dropdownColor: isDark ? AppTheme.darkCardColor : Colors.white,
             style: TextStyle(
               color: isTiendaNoAsignadaDisabled ? disabledTextColor : normalTextColor,
-              fontSize: 15.0,
-              fontWeight: FontWeight.w500,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
-              labelText: 'Tiendas NO asignadas',
+              labelText: 'Otras Tiendas (Fuera de ruta)',
               labelStyle: TextStyle(
                 color: isTiendaNoAsignadaDisabled ? Colors.grey : unassignedActiveColor,
                 fontWeight: FontWeight.bold,
               ),
               prefixIcon: Icon(
-                Icons.store_mall_directory,
+                Icons.storefront_rounded,
                 color: isTiendaNoAsignadaDisabled ? Colors.grey : unassignedActiveColor,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(16.0),
                 borderSide: BorderSide(
                   color: isTiendaNoAsignadaDisabled ? disabledBorderColor : unassignedActiveColor,
-                  width: 2.0,
+                  width: 1.5,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(16.0),
                 borderSide: BorderSide(color: unassignedActiveColor, width: 2.0),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
-                borderSide: BorderSide(color: disabledBorderColor, width: 1.0),
               ),
               filled: true,
               fillColor: isTiendaNoAsignadaDisabled ? disabledBgColor : unassignedBgColor,
@@ -247,9 +230,9 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
                     });
                   },
           ),
-          const SizedBox(height: 20.0),
+          const SizedBox(height: 16.0),
 
-          // Deu de la tienda (Info Display)
+          // Deudor de la tienda
           TextFormField(
             controller: TextEditingController(
               text: selectedDeudor != null
@@ -261,18 +244,18 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
             style: TextStyle(
               color: disabledTextColor,
               fontWeight: FontWeight.bold,
-              fontSize: 15.0,
+              fontSize: 14.5,
             ),
             decoration: InputDecoration(
-              labelText: 'Deu de la tienda',
+              labelText: 'Cliente / Deudor asociado',
               labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-              prefixIcon: const Icon(Icons.person),
+              prefixIcon: const Icon(Icons.person_rounded),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
-                borderSide: BorderSide(color: disabledBorderColor, width: 1.5),
+                borderRadius: BorderRadius.circular(16.0),
+                borderSide: BorderSide(color: disabledBorderColor, width: 1.0),
               ),
               filled: true,
               fillColor: disabledBgColor,
@@ -280,11 +263,9 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
           ),
           const SizedBox(height: 24.0),
 
-          // Buttons Row
+          // Acciones de Botones
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Copiar Último Pedido
               Expanded(
                 child: OutlinedButton(
                   onPressed: !hasSelection
@@ -297,51 +278,23 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
                           );
                         },
                   style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.accentColor,
                     side: BorderSide(
-                      color: hasSelection ? Colors.blue : Colors.grey.shade400,
-                      width: 2.0,
+                      color: hasSelection ? AppTheme.accentColor : Colors.grey.shade400,
+                      width: 1.5,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
+                      borderRadius: BorderRadius.circular(14.0),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14.0),
                   ),
-                  child: Text(
-                    'Copiar Último Pedido',
-                    style: TextStyle(
-                      color: hasSelection ? Colors.blue : Colors.grey.shade500,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12.0,
-                    ),
-                    textAlign: TextAlign.center,
+                  child: const Text(
+                    'Copiar Último',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.0),
                   ),
                 ),
               ),
-              const SizedBox(width: 8.0),
-
-              // Cancelar
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: isDark ? Colors.grey.shade600 : Colors.grey.shade500, width: 2.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
-                ),
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    color: isDark ? Colors.white70 : Colors.grey.shade800,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8.0),
-
-              // Nuevo
+              const SizedBox(width: 10.0),
               Expanded(
                 child: ElevatedButton(
                   onPressed: !hasSelection
@@ -355,24 +308,21 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    disabledBackgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                    disabledForegroundColor: Colors.grey,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
+                      borderRadius: BorderRadius.circular(14.0),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14.0),
                   ),
-                  child: Text(
-                    'Nuevo',
-                    style: TextStyle(
-                      color: hasSelection ? Colors.white : Colors.grey.shade600,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: const Text(
+                    'Crear Borrador',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12.0),
         ],
       ),
     );

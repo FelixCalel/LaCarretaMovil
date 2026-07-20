@@ -41,20 +41,35 @@ class DraftPedidoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final sectionTextColor = colorScheme.onSurface;
-    final mutedTextColor = colorScheme.onSurfaceVariant;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
-      elevation: 3.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(22.0),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12.0,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-              child: const Icon(Icons.assignment, color: AppTheme.primaryColor),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(Icons.edit_note_rounded, color: Theme.of(context).primaryColor, size: 26),
             ),
             title: Text(
               pedido.tiendaNombre,
@@ -63,51 +78,52 @@ class DraftPedidoCard extends StatelessWidget {
                 fontSize: 16.0,
               ),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Cliente: ${pedido.deudorNombre}'),
-                Text(
-                  'Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.creadoEl)}',
-                  style: const TextStyle(fontSize: 12.0),
-                ),
-              ],
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Cliente: ${pedido.deudorNombre}', style: TextStyle(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary, fontSize: 13)),
+                  Text(
+                    'Borrador • ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.creadoEl)}',
+                    style: TextStyle(fontSize: 12.0, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                  ),
+                ],
+              ),
             ),
             trailing: IconButton(
-              icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+              icon: Icon(isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 28),
               onPressed: onToggleExpand,
             ),
           ),
 
-          // Acciones de Borrador
+          // Acciones de Borrador M3
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 6.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                   icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.redAccent,
+                    Icons.delete_outline_rounded,
+                    color: AppTheme.errorColor,
                   ),
                   onPressed: onDeletePedido,
                   tooltip: 'Eliminar Borrador',
                 ),
                 ElevatedButton.icon(
                   onPressed: onRealizarPedido,
-                  icon: const Icon(Icons.send, size: 16.0, color: Colors.white),
+                  icon: const Icon(Icons.send_rounded, size: 16.0, color: Colors.white),
                   label: const Text(
                     'Realizar Pedido',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
+                    backgroundColor: AppTheme.successColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
+                      borderRadius: BorderRadius.circular(14.0),
                     ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   ),
                 ),
               ],
@@ -115,17 +131,23 @@ class DraftPedidoCard extends StatelessWidget {
           ),
 
           if (isExpanded) ...[
-            const Divider(),
+            const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                'DETALLES DEL PEDIDO',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13.0,
-                  color: mutedTextColor,
-                  letterSpacing: 1.1,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
+              child: Row(
+                children: [
+                  Icon(Icons.list_alt_rounded, size: 18, color: Theme.of(context).primaryColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PRODUCTOS EN BORRADOR',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12.5,
+                      color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (isDetailsLoading)
@@ -135,8 +157,8 @@ class DraftPedidoCard extends StatelessWidget {
               )
             else if (details.isEmpty)
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24.0),
-                child: Text('No hay productos agregados a este pedido.'),
+                padding: EdgeInsets.symmetric(vertical: 20.0),
+                child: Text('No hay productos agregados a este pedido.', style: TextStyle(color: Colors.grey)),
               )
             else
               ListView.builder(
@@ -145,10 +167,12 @@ class DraftPedidoCard extends StatelessWidget {
                 itemCount: details.length,
                 itemBuilder: (context, dIndex) {
                   final d = details[dIndex];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8.0,
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF131C38) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14.0),
                     ),
                     child: Row(
                       children: [
@@ -158,16 +182,16 @@ class DraftPedidoCard extends StatelessWidget {
                             children: [
                               Text(
                                 d.productoNombre,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: sectionTextColor,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.0,
                                 ),
                               ),
                               Text(
                                 d.productoCodigo,
                                 style: TextStyle(
-                                  fontSize: 11.0,
-                                  color: mutedTextColor,
+                                  fontSize: 11.5,
+                                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                                 ),
                               ),
                             ],
@@ -178,28 +202,26 @@ class DraftPedidoCard extends StatelessWidget {
                             IconButton(
                               constraints: const BoxConstraints(),
                               padding: const EdgeInsets.all(4.0),
-                              icon: Icon(
-                                Icons.remove_circle_outline,
-                                size: 20.0,
-                                color: mutedTextColor,
+                              icon: const Icon(
+                                Icons.remove_circle_outline_rounded,
+                                size: 22.0,
                               ),
-                              onPressed: () =>
-                                  onUpdateQuantity(d, d.cantidad - 1),
+                              onPressed: () => onUpdateQuantity(d, d.cantidad - 1),
                             ),
-                            const SizedBox(width: 6.0),
+                            const SizedBox(width: 4.0),
                             GestureDetector(
                               onTap: () => _showQuantityEditDialog(context, d),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
+                                  horizontal: 10.0,
                                   vertical: 4.0,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6.0),
+                                  color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8.0),
                                   border: Border.all(
-                                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                                    width: 0.8,
+                                    color: Theme.of(context).primaryColor,
+                                    width: 1.0,
                                   ),
                                 ),
                                 child: Text(
@@ -212,27 +234,25 @@ class DraftPedidoCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6.0),
+                            const SizedBox(width: 4.0),
                             IconButton(
                               constraints: const BoxConstraints(),
                               padding: const EdgeInsets.all(4.0),
-                              icon: Icon(
-                                Icons.add_circle_outline,
-                                size: 20.0,
-                                color: mutedTextColor,
+                              icon: const Icon(
+                                Icons.add_circle_outline_rounded,
+                                size: 22.0,
                               ),
-                              onPressed: () =>
-                                  onUpdateQuantity(d, d.cantidad + 1),
+                              onPressed: () => onUpdateQuantity(d, d.cantidad + 1),
                             ),
                           ],
                         ),
-                        const SizedBox(width: 4.0),
+                        const SizedBox(width: 6.0),
                         IconButton(
                           constraints: const BoxConstraints(),
                           padding: const EdgeInsets.all(4.0),
                           icon: const Icon(
-                            Icons.delete,
-                            color: Colors.redAccent,
+                            Icons.delete_rounded,
+                            color: AppTheme.errorColor,
                             size: 20.0,
                           ),
                           onPressed: () => onDeleteItem(d),
@@ -243,19 +263,19 @@ class DraftPedidoCard extends StatelessWidget {
                 },
               ),
 
-            const Divider(),
+            const Divider(height: 24),
 
-            // Formulario de agregar ítem al detalle
+            // Formulario M3 de agregar producto
             Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   DropdownMenu<int>(
                     key: ValueKey(selectedProductId),
                     expandedInsets: EdgeInsets.zero,
-                    menuHeight: 250, // Límite de altura para no tapar toda la pantalla
-                    label: const Text('Seleccione un item o busque por nombre'),
+                    menuHeight: 250,
+                    label: const Text('Seleccionar o buscar producto...'),
                     enableFilter: true,
                     enableSearch: true,
                     requestFocusOnTap: true,
@@ -270,7 +290,7 @@ class DraftPedidoCard extends StatelessWidget {
                         )
                         .toList(),
                   ),
-                  const SizedBox(height: 8.0),
+                  const SizedBox(height: 12.0),
                   Row(
                     children: [
                       Expanded(
@@ -280,8 +300,8 @@ class DraftPedidoCard extends StatelessWidget {
                           decoration: const InputDecoration(
                             labelText: 'Cantidad',
                             contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.0,
-                              vertical: 8.0,
+                              horizontal: 16.0,
+                              vertical: 12.0,
                             ),
                           ),
                         ),
@@ -289,20 +309,22 @@ class DraftPedidoCard extends StatelessWidget {
                       const SizedBox(width: 12.0),
                       ElevatedButton.icon(
                         onPressed: onAddItem,
-                        icon: const Icon(Icons.add, color: Colors.white),
+                        icon: const Icon(Icons.add_rounded, color: Colors.white),
                         label: const Text(
                           'Agregar',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryColor,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
+                            borderRadius: BorderRadius.circular(14.0),
                           ),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12.0),
                 ],
               ),
             ),
@@ -318,6 +340,7 @@ class DraftPedidoCard extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
           title: const Text('Editar Cantidad'),
           content: TextField(
             controller: controller,
@@ -331,9 +354,9 @@ class DraftPedidoCard extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 final val = int.tryParse(controller.text);
                 if (val != null && val > 0) {
@@ -341,7 +364,8 @@ class DraftPedidoCard extends StatelessWidget {
                 }
                 Navigator.pop(dialogContext);
               },
-              child: const Text('Guardar'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+              child: const Text('Guardar', style: TextStyle(color: Colors.white)),
             ),
           ],
         );

@@ -6,11 +6,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:animations/animations.dart';
 import 'package:go_router/go_router.dart';
 import 'notifications_cubit.dart';
 import 'widgets/notifications_bottom_sheet.dart';
 import '../services/secure_storage_service.dart';
 import '../theme/theme_cubit.dart';
+import '../network/api_client.dart';
 import 'models/modulo_model.dart';
 import 'models/opcion_model.dart';
 import 'widgets/main_drawer.dart';
@@ -39,6 +41,7 @@ class _MainLayoutState extends State<MainLayout> {
   String _userName = 'Cargando...';
   String _userRole = '';
   List<ModuloModel> _groupedModules = [];
+  String? _avatarBase64;
 
   // Variables de conectividad
   bool _isConnected = true;
@@ -240,12 +243,28 @@ class _MainLayoutState extends State<MainLayout> {
         ),
       ]);
     }
+    final avatar = await _storage.getUserAvatar();
 
     setState(() {
       _userName = name;
       _userRole = role;
       _groupedModules = modules;
+      _avatarBase64 = avatar;
     });
+
+    final userId = await _storage.getUserId();
+    if (userId != null && avatar == null) {
+      try {
+        final avatarResponse = await ApiClient().dio.get('/usuarios/$userId/avatar');
+        final av = avatarResponse.data['avatar'] as String?;
+        if (av != null && av.isNotEmpty) {
+          setState(() {
+            _avatarBase64 = av;
+          });
+          await _storage.saveUserAvatar(av);
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> _logout() async {
@@ -408,6 +427,7 @@ class _MainLayoutState extends State<MainLayout> {
           location: location,
           primaryColor: primaryColor,
           onLogout: _logout,
+          userAvatar: _avatarBase64,
         ),
         body: Column(
           children: [
@@ -438,7 +458,23 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                 ),
               ).animate().fade().slideY(begin: -0.5, end: 0, duration: 300.ms),
-            Expanded(child: widget.body),
+            Expanded(
+              child: PageTransitionSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, primaryAnimation, secondaryAnimation) {
+                  return FadeThroughTransition(
+                    animation: primaryAnimation,
+                    secondaryAnimation: secondaryAnimation,
+                    fillColor: Colors.transparent,
+                    child: child,
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey(location),
+                  child: widget.body,
+                ),
+              ),
+            ),
           ],
         ),
         floatingActionButton: widget.floatingActionButton,

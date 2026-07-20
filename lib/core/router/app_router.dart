@@ -11,6 +11,7 @@ import '../../features/pedidos/presentation/crear_pedido_screen.dart';
 import '../../features/ventas/presentation/ventas_screen.dart';
 import '../../features/produccion/presentation/produccion_screen.dart';
 import '../../features/compras/presentation/compras_screen.dart';
+import '../../features/perfil/presentation/perfil_screen.dart';
 
 class AppRouter {
   static final _storage = SecureStorageService();
@@ -96,6 +97,10 @@ class AppRouter {
       GoRoute(
         path: '/compras',
         builder: (context, state) => const ComprasScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const PerfilScreen(),
       ),
     ],
   );

@@ -19,6 +19,7 @@ class SecureStorageService {
   static const String _kUserPermissions = 'user_permissions';
   static const String _kBioUser = 'bio_user';
   static const String _kBioPass = 'bio_pass';
+  static const String _kUserAvatar = 'user_avatar';
 
   // Read methods
   Future<String?> getAccessToken() => _storage.read(key: _kAccessToken);
@@ -31,6 +32,7 @@ class SecureStorageService {
   Future<String?> getUserPermissions() => _storage.read(key: _kUserPermissions);
   Future<String?> getBioUser() => _storage.read(key: _kBioUser);
   Future<String?> getBioPass() => _storage.read(key: _kBioPass);
+  Future<String?> getUserAvatar() => _storage.read(key: _kUserAvatar);
 
   // Write methods
   Future<void> saveAccessToken(String value) => _storage.write(key: _kAccessToken, value: value);
@@ -41,6 +43,7 @@ class SecureStorageService {
   Future<void> saveUserRoutes(String value) => _storage.write(key: _kUserRoutes, value: value);
   Future<void> saveUserPaisId(String value) => _storage.write(key: _kUserPaisId, value: value);
   Future<void> saveUserPermissions(String value) => _storage.write(key: _kUserPermissions, value: value);
+  Future<void> saveUserAvatar(String value) => _storage.write(key: _kUserAvatar, value: value);
   
   Future<void> saveBioCredentials(String username, String password) async {
     await _storage.write(key: _kBioUser, value: username);
@@ -56,6 +59,7 @@ class SecureStorageService {
   Future<void> deleteUserRoutes() => _storage.delete(key: _kUserRoutes);
   Future<void> deleteUserPaisId() => _storage.delete(key: _kUserPaisId);
   Future<void> deleteUserPermissions() => _storage.delete(key: _kUserPermissions);
+  Future<void> deleteUserAvatar() => _storage.delete(key: _kUserAvatar);
   
   Future<void> deleteBioCredentials() async {
     await _storage.delete(key: _kBioUser);
@@ -71,5 +75,6 @@ class SecureStorageService {
     await deleteUserRoutes();
     await deleteUserPaisId();
     await deleteUserPermissions();
+    await deleteUserAvatar();
   }
 }

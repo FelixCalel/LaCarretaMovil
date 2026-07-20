@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/modulo_model.dart';
@@ -10,6 +12,7 @@ class MainDrawer extends StatelessWidget {
   final String location;
   final Color primaryColor;
   final VoidCallback onLogout;
+  final String? userAvatar;
 
   const MainDrawer({
     super.key,
@@ -19,32 +22,33 @@ class MainDrawer extends StatelessWidget {
     required this.location,
     required this.primaryColor,
     required this.onLogout,
+    this.userAvatar,
   });
 
   IconData _getIconData(String name) {
     switch (name) {
-      case 'FaTools': return Icons.build;
-      case 'MdPerson': return Icons.person;
-      case 'FiShoppingCart': return Icons.shopping_cart;
-      case 'FaCashRegister': return Icons.point_of_sale;
-      case 'FiClipboard': return Icons.assignment;
-      case 'AiFillDashboard': return Icons.dashboard;
-      case 'FaClipboardList': return Icons.assignment;
-      case 'BsFillHouseDoorFill': return Icons.home;
-      case 'FaShippingFast': return Icons.local_shipping;
-      case 'BsGraphUp': return Icons.trending_up;
-      case 'MdApproval': return Icons.check_circle;
-      case 'FaCheckCircle': return Icons.done;
-      case 'BsPersonCheckFill': return Icons.person_pin;
-      case 'FiArchive': return Icons.archive;
-      case 'MdEvent': return Icons.event;
-      case 'FaBook': return Icons.book;
-      case 'MdShoppingCart': return Icons.shopping_basket;
-      case 'FaUsers': return Icons.people;
-      case 'AiOutlinePhone': return Icons.phone;
-      case 'MdAssignmentTurnedIn': return Icons.assignment_turned_in;
-      case 'FaNetworkWired': return Icons.lan;
-      default: return Icons.folder_open;
+      case 'FaTools': return Icons.build_rounded;
+      case 'MdPerson': return Icons.person_rounded;
+      case 'FiShoppingCart': return Icons.shopping_cart_rounded;
+      case 'FaCashRegister': return Icons.point_of_sale_rounded;
+      case 'FiClipboard': return Icons.assignment_rounded;
+      case 'AiFillDashboard': return Icons.dashboard_rounded;
+      case 'FaClipboardList': return Icons.assignment_rounded;
+      case 'BsFillHouseDoorFill': return Icons.home_rounded;
+      case 'FaShippingFast': return Icons.local_shipping_rounded;
+      case 'BsGraphUp': return Icons.trending_up_rounded;
+      case 'MdApproval': return Icons.check_circle_rounded;
+      case 'FaCheckCircle': return Icons.done_all_rounded;
+      case 'BsPersonCheckFill': return Icons.person_pin_rounded;
+      case 'FiArchive': return Icons.archive_rounded;
+      case 'MdEvent': return Icons.event_rounded;
+      case 'FaBook': return Icons.menu_book_rounded;
+      case 'MdShoppingCart': return Icons.shopping_basket_rounded;
+      case 'FaUsers': return Icons.people_alt_rounded;
+      case 'AiOutlinePhone': return Icons.phone_rounded;
+      case 'MdAssignmentTurnedIn': return Icons.assignment_turned_in_rounded;
+      case 'FaNetworkWired': return Icons.lan_rounded;
+      default: return Icons.folder_rounded;
     }
   }
 
@@ -70,81 +74,120 @@ class MainDrawer extends StatelessWidget {
     }
   }
 
+  Uint8List? _decodeBase64(String? base64Str) {
+    if (base64Str == null || base64Str.isEmpty) return null;
+    try {
+      String cleanStr = base64Str;
+      if (cleanStr.contains(',')) {
+        cleanStr = cleanStr.split(',')[1];
+      }
+      return base64Decode(cleanStr.trim());
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final decodedBytes = _decodeBase64(userAvatar);
+
     return Drawer(
       child: Column(
         children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primaryColor, AppTheme.primaryLightColor],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // Header M3 con perfil
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/profile');
+            },
+            child: UserAccountsDrawerHeader(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF031604), const Color(0xFF09290B)]
+                      : [AppTheme.primaryDarkColor, AppTheme.primaryColor],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              currentAccountPicture: Container(
+                padding: const EdgeInsets.all(3.0),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: CircleAvatar(
+                  backgroundColor: primaryColor,
+                  backgroundImage: decodedBytes != null
+                      ? MemoryImage(decodedBytes)
+                      : null,
+                  child: decodedBytes == null
+                      ? Text(
+                          _getInitials(userName),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22.0,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              accountName: Text(
+                userName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.0,
+                  color: Colors.white,
+                ),
+              ),
+              accountEmail: Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  userRole.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11.0,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    Image.asset(
-                      'assets/images/LogoLaCarreta.png',
-                      height: 50.0,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const CircleAvatar(
-                          backgroundColor: Colors.white,
-                          child: Icon(Icons.store, color: AppTheme.primaryColor),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 12.0),
-                    const Text(
-                      'La Carreta',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12.0),
-                Text(
-                  userName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
-                  ),
-                ),
-                Text(
-                  userRole.toUpperCase(),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 12.0,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
           ),
+          
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               children: [
                 ListTile(
-                  leading: const Icon(Icons.home),
-                  title: const Text('Inicio'),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  leading: const Icon(Icons.home_rounded),
+                  title: const Text('Inicio', style: TextStyle(fontWeight: FontWeight.w600)),
                   selected: location == '/home',
+                  selectedTileColor: primaryColor.withValues(alpha: 0.15),
                   selectedColor: primaryColor,
                   onTap: () {
                     Navigator.pop(context);
                     context.go('/home');
                   },
                 ),
+                const SizedBox(height: 4),
                 ...groupedModules.map((modulo) {
                   final bool isModuloSelected = (location == '/pedidos' && modulo.id == 2) ||
                       (location == '/ventas' && modulo.id == 3) ||
@@ -153,9 +196,11 @@ class MainDrawer extends StatelessWidget {
 
                   if (modulo.opciones.isEmpty) {
                     return ListTile(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       leading: Icon(_getIconData(modulo.icono)),
-                      title: Text(modulo.nombre),
+                      title: Text(modulo.nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
                       selected: isModuloSelected,
+                      selectedTileColor: primaryColor.withValues(alpha: 0.15),
                       selectedColor: primaryColor,
                       onTap: () {
                         Navigator.pop(context);
@@ -167,61 +212,79 @@ class MainDrawer extends StatelessWidget {
                     );
                   }
 
-                  return ExpansionTile(
-                    leading: Icon(
-                      _getIconData(modulo.icono),
-                      color: isModuloSelected ? primaryColor : null,
-                    ),
-                    title: Text(
-                      modulo.nombre,
-                      style: TextStyle(
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: ExpansionTile(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      leading: Icon(
+                        _getIconData(modulo.icono),
                         color: isModuloSelected ? primaryColor : null,
-                        fontWeight: isModuloSelected ? FontWeight.bold : null,
                       ),
-                    ),
-                    children: modulo.opciones.map((opcion) {
-                      final bool isOptionSelected =
-                          (location == '/pedidos' && (opcion.nombre == 'Crear Pedido' || opcion.nombre == 'Historial Pedido')) ||
-                          (location == '/ventas' && (opcion.nombre == 'Pedidos Entrantes' || opcion.nombre == 'Exportar Pedido')) ||
-                          (location == '/produccion' && (opcion.nombre == 'Asignación de Áreas' || opcion.nombre == 'Pendiente')) ||
-                          (location == '/compras' && (opcion.nombre == 'Comprador' || opcion.nombre == 'Jefe de compras' || opcion.nombre == 'Control de Calidad'));
+                      title: Text(
+                        modulo.nombre,
+                        style: TextStyle(
+                          color: isModuloSelected ? primaryColor : null,
+                          fontWeight: isModuloSelected ? FontWeight.bold : FontWeight.w600,
+                        ),
+                      ),
+                      children: modulo.opciones.map((opcion) {
+                        final bool isOptionSelected =
+                            (location == '/pedidos' && (opcion.nombre == 'Crear Pedido' || opcion.nombre == 'Historial Pedido')) ||
+                            (location == '/ventas' && (opcion.nombre == 'Pedidos Entrantes' || opcion.nombre == 'Exportar Pedido')) ||
+                            (location == '/produccion' && (opcion.nombre == 'Asignación de Áreas' || opcion.nombre == 'Pendiente')) ||
+                            (location == '/compras' && (opcion.nombre == 'Comprador' || opcion.nombre == 'Jefe de compras' || opcion.nombre == 'Control de Calidad'));
 
-                      return ListTile(
-                        contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
-                        leading: Icon(
-                          _getIconData(opcion.icono),
-                          size: 20.0,
-                          color: isOptionSelected ? primaryColor : null,
-                        ),
-                        title: Text(
-                          opcion.nombre,
-                          style: TextStyle(
-                            fontSize: 14.0,
-                            color: isOptionSelected ? primaryColor : null,
-                            fontWeight: isOptionSelected ? FontWeight.bold : null,
+                        return Container(
+                          margin: const EdgeInsets.only(left: 12.0, bottom: 2.0),
+                          child: ListTile(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            contentPadding: const EdgeInsets.only(left: 20.0, right: 16.0),
+                            leading: Icon(
+                              _getIconData(opcion.icono),
+                              size: 20.0,
+                              color: isOptionSelected ? primaryColor : null,
+                            ),
+                            title: Text(
+                              opcion.nombre,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                color: isOptionSelected ? primaryColor : null,
+                                fontWeight: isOptionSelected ? FontWeight.bold : FontWeight.w500,
+                              ),
+                            ),
+                            selected: isOptionSelected,
+                            selectedTileColor: primaryColor.withValues(alpha: 0.12),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _navigateToOption(context, opcion.ruta, opcion.nombre);
+                            },
                           ),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _navigateToOption(context, opcion.ruta, opcion.nombre);
-                        },
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                   );
                 }),
               ],
             ),
           ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.redAccent),
-            title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.redAccent)),
-            onTap: () {
-              Navigator.pop(context);
-              onLogout();
-            },
+          
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              leading: const Icon(Icons.logout_rounded, color: AppTheme.errorColor),
+              title: const Text(
+                'Cerrar Sesión',
+                style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                onLogout();
+              },
+            ),
           ),
-          const SizedBox(height: 12.0),
         ],
       ),
     );

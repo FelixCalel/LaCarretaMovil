@@ -57,6 +57,7 @@ dependencies:
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
   flutter_animate: any
+  animations: ^2.0.11
   flutter_form_builder: any
   form_builder_validators: any
   skeletonizer: any
@@ -68,6 +69,7 @@ dependencies:
   shorebird_code_push: any
   logger: any
   pinput: any
+  image_picker: ^1.1.2
 
   # OTA Updates & Package Info
 dev_dependencies:

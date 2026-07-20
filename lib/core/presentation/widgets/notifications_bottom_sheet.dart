@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:go_router/go_router.dart';
 import '../notifications_cubit.dart';
+import '../../theme/app_theme.dart';
 
 class NotificationsBottomSheet extends StatelessWidget {
   final ScrollController scrollController;
@@ -15,31 +16,33 @@ class NotificationsBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        color: isDark ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: BlocBuilder<NotificationsCubit, NotificationsState>(
         builder: (context, state) {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'Notificaciones',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: -0.5),
                     ),
                     if (state.notifications.any((n) => !n.leido))
                       TextButton.icon(
                         onPressed: () {
                           context.read<NotificationsCubit>().markAllAsRead();
                         },
-                        icon: const Icon(Icons.done_all, size: 18),
-                        label: const Text('Marcar todo leido', style: TextStyle(fontSize: 12)),
+                        icon: const Icon(Icons.done_all_rounded, size: 18),
+                        label: const Text('Marcar todas leídas', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                       ),
                   ],
                 ),
@@ -52,8 +55,9 @@ class NotificationsBottomSheet extends StatelessWidget {
                     if (state.isLoading) {
                       return ListView.separated(
                         controller: scrollController,
+                        padding: const EdgeInsets.all(16),
                         itemCount: 5,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           return const ListTile(
                             title: Text('Cargando titulo...'),
@@ -69,9 +73,9 @@ class NotificationsBottomSheet extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.notifications_off_outlined, size: 64, color: Colors.grey.shade400),
+                            Icon(Icons.notifications_none_rounded, size: 64, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
                             const SizedBox(height: 12),
-                            const Text('No tienes notificaciones', style: TextStyle(color: Colors.grey)),
+                            const Text('No tienes notificaciones pendientes', style: TextStyle(fontWeight: FontWeight.bold)),
                           ],
                         ),
                       );
@@ -82,6 +86,7 @@ class NotificationsBottomSheet extends StatelessWidget {
 
                     return ListView.builder(
                       controller: scrollController,
+                      padding: const EdgeInsets.all(16),
                       itemCount: displayedNotifs.length + (hasMore ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == displayedNotifs.length) {
@@ -112,50 +117,57 @@ class NotificationsBottomSheet extends StatelessWidget {
                         IconData icon;
                         final tipo = (notif.tipo ?? '').toLowerCase();
                         if (tipo == 'success') {
-                          color = Colors.green;
-                          icon = Icons.check_circle_outline;
+                          color = AppTheme.successColor;
+                          icon = Icons.check_circle_rounded;
                         } else if (tipo == 'error') {
-                          color = Colors.red;
-                          icon = Icons.error_outline;
+                          color = AppTheme.errorColor;
+                          icon = Icons.error_rounded;
                         } else if (tipo == 'warning') {
-                          color = Colors.amber.shade700;
-                          icon = Icons.warning_amber_outlined;
+                          color = AppTheme.warningColor;
+                          icon = Icons.warning_rounded;
                         } else {
-                          color = Colors.blue;
-                          icon = Icons.info_outline;
+                          color = AppTheme.accentColor;
+                          icon = Icons.info_rounded;
                         }
 
-                        final isDark = Theme.of(context).brightness == Brightness.dark;
                         final bg = isDark ? color.withValues(alpha: 0.15) : color.withValues(alpha: 0.08);
-                        final border = color.withValues(alpha: 0.25);
 
                         return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                          margin: const EdgeInsets.only(bottom: 10.0),
                           decoration: BoxDecoration(
                             color: bg,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: border, width: 1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
                           ),
                           child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: color.withValues(alpha: 0.15),
-                              child: Icon(icon, color: color),
+                            contentPadding: const EdgeInsets.all(12),
+                            leading: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(icon, color: color, size: 22),
                             ),
                             title: Text(
                               notif.titulo,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
                               ),
                             ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 4),
-                                Text(notif.mensaje),
-                                const SizedBox(height: 4),
                                 Text(
-                                  DateFormat('dd/MM/yyyy HH:mm').format(notif.creadoEl.toLocal()),
-                                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  notif.mensaje,
+                                  style: TextStyle(fontSize: 13, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  DateFormat('dd/MM/yyyy • HH:mm').format(notif.creadoEl.toLocal()),
+                                  style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
                                 ),
                               ],
                             ),
@@ -165,7 +177,7 @@ class NotificationsBottomSheet extends StatelessWidget {
                               }
                               if (notif.pedidoId != null) {
                                 Navigator.pop(context);
-                                context.go('/historialPedido/listar');
+                                context.go('/pedidos');
                               }
                             },
                           ),
