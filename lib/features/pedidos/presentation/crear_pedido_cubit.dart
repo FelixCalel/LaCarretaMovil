@@ -57,14 +57,30 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
       final deudores = await datasource.getDeudores();
       final tiendas = await datasource.getTiendas();
 
-      final userRoutesStr = await _storage.read(key: 'user_routes') ?? '';
-      final userRoutes = userRoutesStr.split(',')
-          .map((id) => int.tryParse(id) ?? 0)
-          .where((id) => id != 0)
-          .toList();
+      List<int> userRoutes = [];
+      int userPaisId = 0;
+      try {
+        final meResponse = await datasource.apiClient.dio.get('/login/me');
+        final data = meResponse.data;
+        if (data != null) {
+          final userJson = data['user'] ?? data['usuario'] ?? data;
+          final rutas = userJson['rutas'] as List<dynamic>? ?? [];
+          userRoutes = rutas.map((r) => int.tryParse(r['id']?.toString() ?? '') ?? 0).where((id) => id != 0).toList();
+          userPaisId = int.tryParse(userJson['paisId']?.toString() ?? '') ?? 0;
+          
+          await _storage.write(key: 'user_routes', value: userRoutes.join(','));
+          await _storage.write(key: 'user_pais_id', value: userPaisId.toString());
+        }
+      } catch (_) {
+        final userRoutesStr = await _storage.read(key: 'user_routes') ?? '';
+        userRoutes = userRoutesStr.split(',')
+            .map((id) => int.tryParse(id) ?? 0)
+            .where((id) => id != 0)
+            .toList();
 
-      final userPaisIdStr = await _storage.read(key: 'user_pais_id');
-      final userPaisId = int.tryParse(userPaisIdStr ?? '') ?? 0;
+        final userPaisIdStr = await _storage.read(key: 'user_pais_id');
+        userPaisId = int.tryParse(userPaisIdStr ?? '') ?? 0;
+      }
 
       emit(state.copyWith(
         draftPedidos: draftPedidos,

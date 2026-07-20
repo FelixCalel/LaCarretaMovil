@@ -44,13 +44,18 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
       return true;
     }).toList();
 
+    debugPrint('DEBUG: userRoutes=${widget.userRoutes}');
+    if (baseTiendas.isNotEmpty) {
+      debugPrint('DEBUG: First tienda name="${baseTiendas.first.nombre}" rutaId=${baseTiendas.first.rutaId}');
+      debugPrint('DEBUG: baseTiendas rutaIds=${baseTiendas.map((t) => t.rutaId).toSet().toList()}');
+    }
+
     // Filter into assigned vs unassigned
     assignedTiendas = baseTiendas
         .where((t) => widget.userRoutes.contains(t.rutaId))
         .toList();
-    unassignedTiendas = baseTiendas
-        .where((t) => !widget.userRoutes.contains(t.rutaId))
-        .toList();
+    unassignedTiendas = baseTiendas;
+    debugPrint('DEBUG: assignedTiendas count=${assignedTiendas.length}, unassignedTiendas count=${unassignedTiendas.length}');
   }
 
   CatalogTienda? getSelectedTienda() {
@@ -252,7 +257,7 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
                   : '',
             ),
             key: ValueKey(selectedDeudor?.id ?? -1),
-            readOnly: true,
+            enabled: false,
             style: TextStyle(
               color: disabledTextColor,
               fontWeight: FontWeight.bold,
