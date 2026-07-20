@@ -53,7 +53,9 @@ class MainDrawer extends StatelessWidget {
   }
 
   void _navigateToOption(BuildContext context, String routePath, String optionName) {
-    if (optionName == 'Crear Pedido' || optionName == 'Historial Pedido') {
+    if (optionName == 'Crear Pedido') {
+      context.go('/pedidos/crear');
+    } else if (optionName == 'Historial Pedido') {
       context.go('/pedidos');
     } else if (optionName == 'Pedidos Entrantes' || optionName == 'Exportar Pedido') {
       context.go('/ventas');
@@ -62,7 +64,9 @@ class MainDrawer extends StatelessWidget {
     } else if (optionName == 'Comprador' || optionName == 'Jefe de compras' || optionName == 'Control de Calidad') {
       context.go('/compras');
     } else {
-      if (routePath.contains('pedido')) {
+      if (routePath.contains('pedido/crear') || routePath.contains('pedido/listar')) {
+        context.go(routePath.contains('crear') ? '/pedidos/crear' : '/pedidos');
+      } else if (routePath.contains('pedido')) {
         context.go('/pedidos');
       } else if (routePath.contains('ventas') || routePath.contains('exportar')) {
         context.go('/ventas');
