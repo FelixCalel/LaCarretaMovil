@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/services/notification_service.dart';
 import '../data/pedidos_datasource.dart';
 import '../domain/detalle_model.dart';
 import '../domain/producto_model.dart';
@@ -8,8 +10,39 @@ import 'crear_pedido_state.dart';
 class CrearPedidoCubit extends Cubit<CrearPedidoState> {
   final PedidosDatasource datasource;
   final _storage = const FlutterSecureStorage();
+  StreamSubscription<Map<String, dynamic>>? _wsSubscription;
 
-  CrearPedidoCubit({required this.datasource}) : super(const CrearPedidoState());
+  CrearPedidoCubit({required this.datasource}) : super(const CrearPedidoState()) {
+    _listenToWS();
+  }
+
+  void _listenToWS() {
+    _wsSubscription = NotificationService().wsEvents.listen((event) {
+      try {
+        final type = event['type'];
+        final payload = event['payload'];
+        if (type == 'on-order-status-changed') {
+          loadData();
+        } else if (type == 'order-detail-changed') {
+          if (payload != null) {
+            final pedidoIdRaw = payload['pedidoId'];
+            final pedidoId = pedidoIdRaw is int ? pedidoIdRaw : int.tryParse(pedidoIdRaw?.toString() ?? '');
+            if (pedidoId != null) {
+              final isExpanded = state.expandedPedidos[pedidoId] ?? false;
+              if (isExpanded) {
+                try {
+                  final pedido = state.draftPedidos.firstWhere((p) => p.id == pedidoId);
+                  loadPedidoDetails(pedidoId, pedido.deudorId);
+                } catch (_) {}
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Safe catch for parsing/stream issues
+      }
+    });
+  }
 
   Future<void> loadData() async {
     emit(state.copyWith(isLoading: true, clearError: true));
@@ -256,5 +289,11 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
 
   void clearSuccess() {
     emit(state.copyWith(clearSuccess: true));
+  }
+
+  @override
+  Future<void> close() {
+    _wsSubscription?.cancel();
+    return super.close();
   }
 }

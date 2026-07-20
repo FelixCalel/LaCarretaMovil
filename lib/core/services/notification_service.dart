@@ -16,8 +16,11 @@ class NotificationService {
   WebSocket? _webSocket;
   final StreamController<NotificationModel> _notificationStreamController =
       StreamController<NotificationModel>.broadcast();
+  final StreamController<Map<String, dynamic>> _wsEventStreamController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<NotificationModel> get notifications => _notificationStreamController.stream;
+  Stream<Map<String, dynamic>> get wsEvents => _wsEventStreamController.stream;
 
   bool _isConnecting = false;
   Timer? _reconnectTimer;
@@ -68,6 +71,8 @@ class NotificationService {
   void _handleIncomingData(dynamic data) {
     try {
       final Map<String, dynamic> message = jsonDecode(data.toString());
+      _wsEventStreamController.add(message);
+
       final type = message['type'];
       final payload = message['payload'];
 

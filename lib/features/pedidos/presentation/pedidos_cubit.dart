@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/services/notification_service.dart';
 import '../data/pedidos_datasource.dart';
 import '../domain/pedido_model.dart';
 
@@ -20,8 +22,20 @@ class PedidosError extends PedidosState {
 
 class PedidosCubit extends Cubit<PedidosState> {
   final PedidosDatasource datasource;
+  StreamSubscription<Map<String, dynamic>>? _wsSubscription;
 
-  PedidosCubit({required this.datasource}) : super(PedidosInitial());
+  PedidosCubit({required this.datasource}) : super(PedidosInitial()) {
+    _listenToWS();
+  }
+
+  void _listenToWS() {
+    _wsSubscription = NotificationService().wsEvents.listen((event) {
+      final type = event['type'];
+      if (type == 'on-order-status-changed') {
+        fetchPedidos();
+      }
+    });
+  }
 
   Future<void> fetchPedidos() async {
     emit(PedidosLoading());
@@ -51,5 +65,11 @@ class PedidosCubit extends Cubit<PedidosState> {
     } catch (e) {
       emit(PedidosError(e.toString().replaceAll('Exception: ', '')));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _wsSubscription?.cancel();
+    return super.close();
   }
 }

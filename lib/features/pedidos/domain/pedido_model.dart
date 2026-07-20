@@ -5,6 +5,7 @@ class PedidoModel {
   final int estadoId;
   final DateTime creadoEl;
   final String? comentario;
+  final String? comentarioDisplay;
   final String deudorNombre;
   final String tiendaNombre;
   final String estadoNombre;
@@ -18,6 +19,7 @@ class PedidoModel {
     required this.estadoId,
     required this.creadoEl,
     this.comentario,
+    this.comentarioDisplay,
     required this.deudorNombre,
     required this.tiendaNombre,
     required this.estadoNombre,
@@ -62,6 +64,7 @@ class PedidoModel {
       estadoId: estadoIdVal,
       creadoEl: DateTime.parse(json['creadoEl'] as String),
       comentario: json['comentario'] as String?,
+      comentarioDisplay: json['comentarioDisplay'] as String?,
       deudorNombre: (json['nombreDeu'] ?? (json['deudor']?['nombre'] ?? '')) as String,
       tiendaNombre: (json['nombreTienda'] ?? (json['tienda']?['nombre'] ?? '')) as String,
       estadoNombre: statusName,

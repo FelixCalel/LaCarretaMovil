@@ -176,6 +176,8 @@ class DraftPedidoCard extends StatelessWidget {
                         Row(
                           children: [
                             IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4.0),
                               icon: Icon(
                                 Icons.remove_circle_outline,
                                 size: 20.0,
@@ -184,6 +186,7 @@ class DraftPedidoCard extends StatelessWidget {
                               onPressed: () =>
                                   onUpdateQuantity(d, d.cantidad - 1),
                             ),
+                            const SizedBox(width: 6.0),
                             Text(
                               '${d.cantidad}',
                               style: TextStyle(
@@ -192,7 +195,10 @@ class DraftPedidoCard extends StatelessWidget {
                                 color: sectionTextColor,
                               ),
                             ),
+                            const SizedBox(width: 6.0),
                             IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4.0),
                               icon: Icon(
                                 Icons.add_circle_outline,
                                 size: 20.0,
@@ -203,8 +209,10 @@ class DraftPedidoCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(width: 8.0),
+                        const SizedBox(width: 4.0),
                         IconButton(
+                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(4.0),
                           icon: const Icon(
                             Icons.delete,
                             color: Colors.redAccent,
