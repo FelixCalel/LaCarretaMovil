@@ -49,7 +49,8 @@ class PedidoDetailsModal extends StatelessWidget {
           );
         }
 
-        final details = data.map((j) => DetalleModel.fromJson(j)).toList();
+        final details = data.map((j) => DetalleModel.fromJson(j)).toList()
+          ..sort((a, b) => a.productoNombre.toLowerCase().compareTo(b.productoNombre.toLowerCase()));
 
         return Padding(
           padding: EdgeInsets.only(

@@ -93,7 +93,8 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
     emit(state.copyWith(loadingDetails: loading));
 
     try {
-      final detalles = await datasource.getPedidoDetalles(pedidoId);
+      final detalles = await datasource.getPedidoDetalles(pedidoId)
+        ..sort((a, b) => a.productoNombre.toLowerCase().compareTo(b.productoNombre.toLowerCase()));
       final pedidoDetalles = Map<int, List<DetalleModel>>.from(state.pedidoDetalles);
       pedidoDetalles[pedidoId] = detalles;
 
