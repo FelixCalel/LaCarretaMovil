@@ -404,9 +404,7 @@ class _MainLayoutState extends State<MainLayout> {
               label: 'Ver',
               textColor: Colors.white,
               onPressed: () {
-                if (notif.pedidoId != null) {
-                  context.go('/historialPedido/listar');
-                }
+                context.go('/pedidos');
               },
             ),
           ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/pedido_model.dart';
 import '../../domain/detalle_model.dart';
@@ -80,15 +79,12 @@ class DraftPedidoCard extends StatelessWidget {
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Cliente: ${pedido.deudorNombre}', style: TextStyle(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary, fontSize: 13)),
-                  Text(
-                    'Borrador • ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.creadoEl)}',
-                    style: TextStyle(fontSize: 12.0, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
-                  ),
-                ],
+              child: Text(
+                'Cliente: ${pedido.deudorNombre}',
+                style: TextStyle(
+                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                  fontSize: 13,
+                ),
               ),
             ),
             trailing: IconButton(
@@ -139,7 +135,7 @@ class DraftPedidoCard extends StatelessWidget {
                   Icon(Icons.list_alt_rounded, size: 18, color: Theme.of(context).primaryColor),
                   const SizedBox(width: 8),
                   Text(
-                    'PRODUCTOS EN BORRADOR',
+                    'DETALLES DEL PEDIDO',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12.5,
@@ -197,56 +193,32 @@ class DraftPedidoCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              constraints: const BoxConstraints(),
-                              padding: const EdgeInsets.all(4.0),
-                              icon: const Icon(
-                                Icons.remove_circle_outline_rounded,
-                                size: 22.0,
-                              ),
-                              onPressed: () => onUpdateQuantity(d, d.cantidad - 1),
+                        GestureDetector(
+                          onTap: () => _showQuantityEditDialog(context, d),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14.0,
+                              vertical: 8.0,
                             ),
-                            const SizedBox(width: 4.0),
-                            GestureDetector(
-                              onTap: () => _showQuantityEditDialog(context, d),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10.0,
-                                  vertical: 4.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  border: Border.all(
-                                    color: Theme.of(context).primaryColor,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                child: Text(
-                                  '${d.cantidad}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15.0,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10.0),
+                              border: Border.all(
+                                color: Theme.of(context).primaryColor,
+                                width: 1.2,
                               ),
                             ),
-                            const SizedBox(width: 4.0),
-                            IconButton(
-                              constraints: const BoxConstraints(),
-                              padding: const EdgeInsets.all(4.0),
-                              icon: const Icon(
-                                Icons.add_circle_outline_rounded,
-                                size: 22.0,
+                            child: Text(
+                              '${d.cantidad}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                                color: Theme.of(context).primaryColor,
                               ),
-                              onPressed: () => onUpdateQuantity(d, d.cantidad + 1),
                             ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(width: 6.0),
+                        const SizedBox(width: 8.0),
                         IconButton(
                           constraints: const BoxConstraints(),
                           padding: const EdgeInsets.all(4.0),

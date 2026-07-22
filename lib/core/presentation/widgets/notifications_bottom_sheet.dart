@@ -132,54 +132,100 @@ class NotificationsBottomSheet extends StatelessWidget {
 
                         final bg = isDark ? color.withValues(alpha: 0.15) : color.withValues(alpha: 0.08);
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10.0),
-                          decoration: BoxDecoration(
-                            color: bg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(12),
-                            leading: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(icon, color: color, size: 22),
+                        return Dismissible(
+                          key: Key('notif_${notif.id}'),
+                          direction: DismissDirection.horizontal,
+                          onDismissed: (direction) {
+                            context.read<NotificationsCubit>().markAsRead(notif.id);
+                          },
+                          background: Container(
+                            margin: const EdgeInsets.only(bottom: 10.0),
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade700,
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            title: Text(
-                              notif.titulo,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14.5,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: const Row(
                               children: [
-                                const SizedBox(height: 4),
+                                Icon(Icons.done_rounded, color: Colors.white),
+                                SizedBox(width: 8),
                                 Text(
-                                  notif.mensaje,
-                                  style: TextStyle(fontSize: 13, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  DateFormat('dd/MM/yyyy • HH:mm').format(notif.creadoEl.toLocal()),
-                                  style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                                  'Leída',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                                 ),
                               ],
                             ),
-                            onTap: () {
-                              if (!notif.leido) {
-                                context.read<NotificationsCubit>().markAsRead(notif.id);
-                              }
-                              if (notif.pedidoId != null) {
-                                Navigator.pop(context);
-                                context.go('/pedidos');
-                              }
-                            },
+                          ),
+                          secondaryBackground: Container(
+                            margin: const EdgeInsets.only(bottom: 10.0),
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade700,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Leída',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                SizedBox(width: 8),
+                                Icon(Icons.done_rounded, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 10.0),
+                            decoration: BoxDecoration(
+                              color: bg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(12),
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(icon, color: color, size: 22),
+                              ),
+                              title: Text(
+                                notif.titulo,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.5,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    notif.mensaje,
+                                    style: TextStyle(fontSize: 13, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    DateFormat('dd/MM/yyyy • HH:mm').format(notif.creadoEl.toLocal()),
+                                    style: TextStyle(fontSize: 11, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                                  ),
+                                ],
+                              ),
+                              onTap: () {
+                                if (!notif.leido) {
+                                  context.read<NotificationsCubit>().markAsRead(notif.id);
+                                }
+                                if (notif.pedidoId != null) {
+                                  Navigator.pop(context);
+                                  context.go('/pedidos');
+                                }
+                              },
+                            ),
                           ),
                         );
                       },

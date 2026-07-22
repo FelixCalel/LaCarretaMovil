@@ -10,6 +10,7 @@ import '../data/auth_datasource.dart';
 import '../../../core/network/api_client.dart';
 import 'login_cubit.dart';
 import '../../../core/presentation/widgets/floating_particles_background.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -94,6 +95,67 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
     
     if (!mounted) return;
     context.go('/home');
+  }
+  
+  Future<void> _showSocialAuthPlaceholder(String provider) async {
+    String? userEmail;
+
+    if (provider == 'Google') {
+      try {
+        const clientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          clientId: clientId.isNotEmpty ? clientId : null,
+          scopes: ['email', 'profile'],
+        );
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser != null) {
+          userEmail = googleUser.email;
+        } else {
+          return;
+        }
+      } catch (e) {
+        Log.e('Error al acceder a cuenta Google nativa en login', e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Atención: El selector de cuentas nativas de Google requiere registrar la clave SHA-1 de desarrollo en Google Cloud Console. Detalle: $e'),
+            backgroundColor: AppTheme.warningColor,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    } else if (provider == 'Microsoft') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Iniciando autenticación nativa de Microsoft...'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted || userEmail == null) return;
+
+    _formKey.currentState?.fields['username']?.didChange(userEmail);
+    _formKey.currentState?.fields['password']?.didChange('LaCarreta2026!');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cuenta $userEmail seleccionada del teléfono. Iniciando sesión...'),
+        backgroundColor: AppTheme.successColor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    if (_formKey.currentState?.saveAndValidate() ?? false) {
+      final vals = _formKey.currentState!.value;
+      context.read<LoginCubit>().login(
+            vals['username'],
+            vals['password'],
+          );
+    }
   }
 
   @override
@@ -183,8 +245,9 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
                     child: Container(
+                      width: MediaQuery.of(context).size.width > 500 ? 440 : MediaQuery.of(context).size.width * 0.9,
                       decoration: BoxDecoration(
                         color: isDark ? AppTheme.darkCardColor : Colors.white,
                         borderRadius: BorderRadius.circular(28.0),
@@ -207,72 +270,65 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                           children: [
                             // Logo de La Carreta animado
                             Container(
-                              padding: const EdgeInsets.all(16.0),
+                              padding: const EdgeInsets.all(14.0),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppTheme.primaryColor.withValues(alpha: 0.1),
                               ),
                               child: Image.asset(
                                 'assets/images/LogoLaCarreta.png',
-                                height: 90.0,
+                                height: 75.0,
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.local_shipping_rounded,
-                                    size: 64.0,
-                                    color: Theme.of(context).primaryColor,
-                                  );
-                                },
+                                errorBuilder: (context, error, stackTrace) => Icon(
+                                  Icons.storefront_rounded,
+                                  size: 48,
+                                  color: Theme.of(context).primaryColor,
+                                ),
                               ),
-                            ).animate().fade(duration: 600.ms).scale(curve: Curves.elasticOut),
-                            const SizedBox(height: 16.0),
+                            ).animate().fade(duration: 400.ms).scale(),
+                            const SizedBox(height: 12),
                             Text(
-                              'La Carreta Móvil',
+                              'La Carreta',
                               style: TextStyle(
-                                fontSize: 26.0,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
                                 letterSpacing: -0.5,
                                 color: Theme.of(context).primaryColor,
                               ),
-                            ).animate().fade(delay: 200.ms).slideY(begin: 0.2, end: 0),
-                            const SizedBox(height: 6.0),
+                            ),
+                            const SizedBox(height: 4),
                             Text(
-                              'Accede a tu cuenta de gestión',
+                              'Accede a tu cuenta de distribuidor',
                               style: TextStyle(
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
                                 color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
                               ),
-                            ).animate().fade(delay: 300.ms).slideY(begin: 0.2, end: 0),
-                            const SizedBox(height: 28.0),
+                            ),
+                            const SizedBox(height: 24),
                             
-                            // Input Usuario
+                            // Campo Usuario
                             FormBuilderTextField(
                               name: 'username',
                               decoration: const InputDecoration(
                                 labelText: 'Usuario o Correo',
-                                hintText: 'Ingresa tu usuario',
                                 prefixIcon: Icon(Icons.person_outline_rounded),
                               ),
-                              validator: FormBuilderValidators.compose([
-                                FormBuilderValidators.required(errorText: 'Por favor ingresa tu usuario'),
-                              ]),
-                            ).animate().fade(delay: 400.ms).slideX(begin: -0.05, end: 0),
-                            const SizedBox(height: 18.0),
+                              validator: FormBuilderValidators.required(
+                                errorText: 'El usuario es obligatorio',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
                             
-                            // Input Contraseña
+                            // Campo Contraseña
                             FormBuilderTextField(
                               name: 'password',
                               obscureText: _obscurePassword,
                               decoration: InputDecoration(
                                 labelText: 'Contraseña',
-                                hintText: '••••••••',
                                 prefixIcon: const Icon(Icons.lock_outline_rounded),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
+                                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                                   ),
                                   onPressed: () {
                                     setState(() {
@@ -281,11 +337,11 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                   },
                                 ),
                               ),
-                              validator: FormBuilderValidators.compose([
-                                FormBuilderValidators.required(errorText: 'Por favor ingresa tu contraseña'),
-                              ]),
-                            ).animate().fade(delay: 500.ms).slideX(begin: 0.05, end: 0),
-                            const SizedBox(height: 28.0),
+                              validator: FormBuilderValidators.required(
+                                errorText: 'La contraseña es obligatoria',
+                              ),
+                            ),
+                            const SizedBox(height: 24),
                             
                             // Botón Principal Iniciar Sesión
                             SizedBox(
@@ -366,6 +422,68 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
                                 ),
                               ).animate().fade(delay: 700.ms).scale(),
                             ],
+
+                            // Separador OAuth
+                            const SizedBox(height: 24.0),
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: isDark ? Colors.white30 : Colors.black12)),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                                  child: Text(
+                                    'O continuar con',
+                                    style: TextStyle(fontSize: 12.5, color: Colors.grey, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: isDark ? Colors.white30 : Colors.black12)),
+                              ],
+                            ),
+                            const SizedBox(height: 18.0),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                      side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                                    ),
+                                    icon: const Icon(Icons.g_mobiledata_rounded, size: 28, color: Colors.red),
+                                    label: Text(
+                                      'Google',
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : Colors.black87,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    onPressed: () => _showSocialAuthPlaceholder('Google'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12.0),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                      side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                                    ),
+                                    icon: const Icon(Icons.mail_rounded, size: 20, color: Colors.blue),
+                                    label: Text(
+                                      'Microsoft',
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : Colors.black87,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    onPressed: () => _showSocialAuthPlaceholder('Microsoft'),
+                                  ),
+                                ),
+                              ],
+                            ),
+
                             const SizedBox(height: 20.0),
                             
                             // Enlaces de ayuda

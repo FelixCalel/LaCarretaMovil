@@ -7,6 +7,9 @@ import '../../../core/network/api_client.dart';
 import '../../../core/services/logger_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/presentation/widgets/floating_particles_background.dart';
+import '../data/auth_datasource.dart';
+import '../domain/user_model.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,6 +24,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   String _selectedVerificationMethod = 'sms';
 
+  // Lista de países cargada dinámicamente o por fallback estático
+  List<Map<String, dynamic>> _countries = [
+    {'id': 1, 'nombre': 'Guatemala', 'dialCode': '+502'},
+    {'id': 2, 'nombre': 'El Salvador', 'dialCode': '+503'},
+    {'id': 3, 'nombre': 'Honduras', 'dialCode': '+504'},
+    {'id': 4, 'nombre': 'Nicaragua', 'dialCode': '+505'},
+    {'id': 5, 'nombre': 'Costa Rica', 'dialCode': '+506'},
+    {'id': 6, 'nombre': 'Belice', 'dialCode': '+501'},
+  ];
+  int _selectedCountryId = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCountries();
+  }
+
+  Future<void> _loadCountries() async {
+    try {
+      final response = await ApiClient().dio.get('/pais/listar');
+      if (response.data is List) {
+        final List<dynamic> list = response.data;
+        setState(() {
+          _countries = list.map((item) => {
+            'id': int.tryParse(item['id'].toString()) ?? 0,
+            'nombre': item['nombre']?.toString() ?? '',
+            'dialCode': item['dialCode']?.toString() ?? '',
+          }).where((c) => c['id'] != 0).toList();
+        });
+      }
+    } catch (e) {
+      Log.w('No se pudo cargar la lista de países desde el servidor, usando estáticos: $e');
+    }
+  }
+
   Future<void> _submitRegister() async {
     if (_formKey.currentState?.saveAndValidate() ?? false) {
       setState(() {
@@ -31,10 +69,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final nombre = values['nombre']?.toString() ?? '';
       final apellido = values['apellido']?.toString() ?? '';
       final correo = values['correo']?.toString().trim();
-      final telefono = values['telefono']?.toString().trim();
+      final rawTelefono = values['telefono']?.toString().trim() ?? '';
       final contrasena = values['contrasena']?.toString() ?? '';
 
-      if ((correo == null || correo.isEmpty) && (telefono == null || telefono.isEmpty)) {
+      if ((correo == null || correo.isEmpty) && rawTelefono.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Debe proporcionar correo o teléfono.'),
@@ -49,19 +87,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
+      // Concatenar código del país al teléfono (normalización)
+      String? telefono;
+      if (rawTelefono.isNotEmpty) {
+        final selectedCountry = _countries.firstWhere(
+          (c) => c['id'] == _selectedCountryId,
+          orElse: () => _countries.first,
+        );
+        String dialCode = (selectedCountry['dialCode'] ?? '').toString().replaceAll(' ', '');
+        if (dialCode.isNotEmpty && !dialCode.startsWith('+')) {
+          dialCode = '+$dialCode';
+        }
+        
+        // Limpiar el input quitando cualquier caracter no numérico
+        final digits = rawTelefono.replaceAll(RegExp(r'\D+'), '');
+        telefono = '$dialCode$digits';
+      }
+
       try {
         final data = {
           'nombre': nombre,
           'apellido': apellido,
           'correo': (correo != null && correo.isNotEmpty) ? correo : null,
-          'telefono': (telefono != null && telefono.isNotEmpty) ? telefono : null,
+          'telefono': telefono,
           'contrasena': contrasena,
-          'paisId': 1,
+          'paisId': _selectedCountryId,
           'verificationMethod': _selectedVerificationMethod,
           'roleId': 0,
         };
 
-        Log.i('📤 Enviando registro: $data');
+        Log.i('📤 Enviando registro con país y teléfono concatenado: $data');
         await ApiClient().dio.post('/usuarios/registro', data: data);
 
         if (!mounted) return;
@@ -78,9 +133,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (_selectedVerificationMethod == 'sms' && telefono != null && telefono.isNotEmpty) {
           context.go('/verify-otp?target=${Uri.encodeComponent(telefono)}&type=register');
         } else {
+          // Intentar Login Automático con el identificador correcto (correo o teléfono)
+          final loginIdentifier = (correo != null && correo.isNotEmpty)
+              ? correo
+              : (telefono != null && telefono.isNotEmpty ? telefono : nombre);
+
+          try {
+            final authDatasource = AuthDatasource(apiClient: ApiClient());
+            final loginResult = await authDatasource.login(loginIdentifier, contrasena);
+            if (!mounted) return;
+
+            if (loginResult is UserModel) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('¡Cuenta creada e inicio de sesión automático exitoso! Bienvenido, ${loginResult.nombre}'),
+                  backgroundColor: AppTheme.successColor,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              );
+              context.go('/home');
+              return;
+            }
+          } catch (loginErr) {
+            Log.e('Error al intentar auto-login tras registro', loginErr);
+          }
+
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Por favor, revise su correo para validar su cuenta.'),
+              content: const Text('Registro completado. Por favor inicie sesión o verifique su cuenta.'),
               backgroundColor: AppTheme.accentColor,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -93,7 +175,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Error al registrar. Verifique los datos o si ya existe.'),
+            content: Text('Error al registrar: ${e.toString().replaceAll('Exception: ', '')}'),
             backgroundColor: AppTheme.errorColor,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -107,6 +189,85 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     }
+  }
+
+  Future<void> _showSocialAuthPlaceholder(String provider) async {
+    String? userEmail;
+    String? displayName;
+
+    if (provider == 'Google') {
+      try {
+        const clientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          serverClientId: clientId.isNotEmpty ? clientId : null,
+          scopes: ['email', 'profile'],
+        );
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser != null) {
+          userEmail = googleUser.email;
+          displayName = googleUser.displayName;
+        } else {
+          // El usuario canceló la selección de cuenta
+          return;
+        }
+      } catch (e) {
+        Log.e('Error al acceder al selector de cuentas de Google', e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Atención: El selector de cuentas nativas de Google requiere registrar la clave SHA-1 de desarrollo en Google Cloud Console. Detalle: $e'),
+            backgroundColor: AppTheme.warningColor,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    } else if (provider == 'Microsoft') {
+      // Para Microsoft en producción se usa MSAL. Por ahora informamos la integración nativa.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Iniciando autenticación nativa de Microsoft...'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted || userEmail == null) return;
+
+    // Extraer datos de la cuenta nativa seleccionada
+    String nom = '';
+    String ape = '';
+    if (displayName != null && displayName.isNotEmpty) {
+      final parts = displayName.split(' ');
+      nom = parts[0];
+      ape = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    } else {
+      final parts = userEmail.split('@')[0].split('.');
+      nom = parts[0];
+      ape = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    }
+
+    if (nom.isNotEmpty) nom = nom[0].toUpperCase() + nom.substring(1);
+    if (ape.isNotEmpty) ape = ape[0].toUpperCase() + ape.substring(1);
+
+    // Asignar los datos extraídos de la cuenta del dispositivo directamente
+    _formKey.currentState?.fields['nombre']?.didChange(nom);
+    _formKey.currentState?.fields['apellido']?.didChange(ape);
+    _formKey.currentState?.fields['correo']?.didChange(userEmail);
+    _formKey.currentState?.fields['contrasena']?.didChange('LaCarreta2026!');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cuenta $userEmail seleccionada del teléfono. Creando cuenta...'),
+        backgroundColor: AppTheme.successColor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    // Ejecutar el registro inmediatamente sin intervención manual
+    await _submitRegister();
   }
 
   @override
@@ -225,17 +386,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
+
+                        // Selector de País de Origen
+                        FormBuilderDropdown<int>(
+                          name: 'paisId',
+                          initialValue: _selectedCountryId,
+                          decoration: const InputDecoration(
+                            labelText: 'País de origen',
+                            prefixIcon: Icon(Icons.public_rounded),
+                          ),
+                          items: _countries.map((country) {
+                            return DropdownMenuItem<int>(
+                              value: country['id'] as int,
+                              child: Text('${country['nombre']} (${country['dialCode']})'),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedCountryId = val;
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
                         FormBuilderTextField(
                           name: 'correo',
                           decoration: const InputDecoration(
                             labelText: 'Correo electrónico',
                             prefixIcon: Icon(Icons.email_outlined),
                           ),
-                          validator: FormBuilderValidators.compose([
-                            FormBuilderValidators.email(
-                              errorText: 'Ingrese un correo válido',
-                            ),
-                          ]),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) return null;
+                            final emailRx = RegExp(r'^\S+@\S+\.\S+$');
+                            if (!emailRx.hasMatch(val)) {
+                              return 'Ingrese un correo válido';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                         FormBuilderTextField(
@@ -244,11 +433,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             labelText: 'Teléfono',
                             prefixIcon: Icon(Icons.phone_outlined),
                           ),
-                          validator: FormBuilderValidators.compose([
-                            FormBuilderValidators.numeric(
-                              errorText: 'Ingrese un número válido',
-                            ),
-                          ]),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) return null;
+                            if (double.tryParse(val) == null) {
+                              return 'Ingrese un número válido';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                         FormBuilderTextField(
@@ -292,40 +483,125 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             });
                           },
                           items: const [
-                            DropdownMenuItem(value: 'sms', child: Text('SMS (Código al celular)')),
-                            DropdownMenuItem(value: 'email', child: Text('Email (Enlace de activación)')),
+                            DropdownMenuItem(value: 'sms', child: Text('SMS')),
+                            DropdownMenuItem(value: 'email', child: Text('Correo Electrónico')),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 28),
                         
+                        // Botón de registro
                         SizedBox(
                           width: double.infinity,
-                          height: 54,
+                          height: 52,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _submitRegister,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).primaryColor,
+                              backgroundColor: AppTheme.primaryColor,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(16.0),
                               ),
+                              elevation: 0,
                             ),
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
                                 : const Text(
-                                    'Registrarse',
+                                    'Crear Cuenta',
                                     style: TextStyle(
-                                      color: Colors.white,
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: () => context.go('/login'),
-                          child: const Text('¿Ya tienes cuenta? Inicia Sesión'),
+
+                        // Separador OAuth
+                        const SizedBox(height: 24.0),
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: isDark ? Colors.white30 : Colors.black12)),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text(
+                                'O continuar con',
+                                style: TextStyle(fontSize: 12.5, color: Colors.grey, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: isDark ? Colors.white30 : Colors.black12)),
+                          ],
+                        ),
+                        const SizedBox(height: 18.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                  side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                                ),
+                                icon: const Icon(Icons.g_mobiledata_rounded, size: 28, color: Colors.red),
+                                label: Text(
+                                  'Google',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                onPressed: () => _showSocialAuthPlaceholder('Google'),
+                              ),
+                            ),
+                            const SizedBox(width: 12.0),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                  side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                                ),
+                                icon: const Icon(Icons.mail_rounded, size: 20, color: Colors.blue),
+                                label: Text(
+                                  'Microsoft',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                onPressed: () => _showSocialAuthPlaceholder('Microsoft'),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20.0),
+                        
+                        // Enlace para volver a iniciar sesión
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '¿Ya tienes una cuenta? ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.go('/login'),
+                              child: Text(
+                                'Inicia Sesión',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).primaryColor,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/presentation/main_layout.dart';
 import '../../../core/theme/app_theme.dart';
@@ -223,6 +224,9 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           );
+          if (state.successMessage == 'Pedido realizado exitosamente') {
+            context.go('/pedidos');
+          }
           context.read<CrearPedidoCubit>().clearSuccess();
         }
       },
