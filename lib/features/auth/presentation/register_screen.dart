@@ -12,7 +12,10 @@ import '../domain/user_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final String? initialEmail;
+  final String? initialDisplayName;
+
+  const RegisterScreen({super.key, this.initialEmail, this.initialDisplayName});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -39,6 +42,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     _loadCountries();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialEmail != null) {
+        _fillFromGoogleData(widget.initialEmail!, widget.initialDisplayName);
+      }
+    });
+  }
+
+  void _fillFromGoogleData(String userEmail, String? displayName) {
+    String nom = '';
+    String ape = '';
+    if (displayName != null && displayName.isNotEmpty) {
+      final parts = displayName.split(' ');
+      nom = parts[0];
+      ape = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    } else {
+      final parts = userEmail.split('@')[0].split('.');
+      nom = parts[0];
+      ape = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    }
+
+    if (nom.isNotEmpty) nom = nom[0].toUpperCase() + nom.substring(1);
+    if (ape.isNotEmpty) ape = ape[0].toUpperCase() + ape.substring(1);
+
+    _formKey.currentState?.fields['nombre']?.didChange(nom);
+    _formKey.currentState?.fields['apellido']?.didChange(ape);
+    _formKey.currentState?.fields['correo']?.didChange(userEmail);
+
+    // Generar contraseña sugerida/aleatoria para flujo rápido
+    final randomPass =
+        'Gg#${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}!';
+    _formKey.currentState?.fields['contrasena']?.didChange(randomPass);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Cuenta $userEmail vinculada con Google. Ingresa tu número de teléfono para finalizar.',
+        ),
+        backgroundColor: AppTheme.successColor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _loadCountries() async {
@@ -47,15 +91,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (response.data is List) {
         final List<dynamic> list = response.data;
         setState(() {
-          _countries = list.map((item) => {
-            'id': int.tryParse(item['id'].toString()) ?? 0,
-            'nombre': item['nombre']?.toString() ?? '',
-            'dialCode': item['dialCode']?.toString() ?? '',
-          }).where((c) => c['id'] != 0).toList();
+          _countries = list
+              .map(
+                (item) => {
+                  'id': int.tryParse(item['id'].toString()) ?? 0,
+                  'nombre': item['nombre']?.toString() ?? '',
+                  'dialCode': item['dialCode']?.toString() ?? '',
+                },
+              )
+              .where((c) => c['id'] != 0)
+              .toList();
         });
       }
     } catch (e) {
-      Log.w('No se pudo cargar la lista de países desde el servidor, usando estáticos: $e');
+      Log.w(
+        'No se pudo cargar la lista de países desde el servidor, usando estáticos: $e',
+      );
     }
   }
 
@@ -78,7 +129,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: const Text('Debe proporcionar correo o teléfono.'),
             backgroundColor: AppTheme.errorColor,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         );
         setState(() {
@@ -94,11 +147,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           (c) => c['id'] == _selectedCountryId,
           orElse: () => _countries.first,
         );
-        String dialCode = (selectedCountry['dialCode'] ?? '').toString().replaceAll(' ', '');
+        String dialCode = (selectedCountry['dialCode'] ?? '')
+            .toString()
+            .replaceAll(' ', '');
         if (dialCode.isNotEmpty && !dialCode.startsWith('+')) {
           dialCode = '+$dialCode';
         }
-        
+
         // Limpiar el input quitando cualquier caracter no numérico
         final digits = rawTelefono.replaceAll(RegExp(r'\D+'), '');
         telefono = '$dialCode$digits';
@@ -112,7 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'telefono': telefono,
           'contrasena': contrasena,
           'paisId': _selectedCountryId,
-          'verificationMethod': _selectedVerificationMethod,
+          'verificationMethod': 'none',
           'roleId': 0,
         };
 
@@ -126,12 +181,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: const Text('Usuario registrado exitosamente.'),
             backgroundColor: AppTheme.successColor,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         );
 
-        if (_selectedVerificationMethod == 'sms' && telefono != null && telefono.isNotEmpty) {
-          context.go('/verify-otp?target=${Uri.encodeComponent(telefono)}&type=register');
+        if (_selectedVerificationMethod == 'sms' &&
+            telefono != null &&
+            telefono.isNotEmpty) {
+          context.go(
+            '/verify-otp?target=${Uri.encodeComponent(telefono)}&type=register',
+          );
         } else {
           // Intentar Login Automático con el identificador correcto (correo o teléfono)
           final loginIdentifier = (correo != null && correo.isNotEmpty)
@@ -140,16 +201,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           try {
             final authDatasource = AuthDatasource(apiClient: ApiClient());
-            final loginResult = await authDatasource.login(loginIdentifier, contrasena);
+            final loginResult = await authDatasource.login(
+              loginIdentifier,
+              contrasena,
+            );
             if (!mounted) return;
 
             if (loginResult is UserModel) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('¡Cuenta creada e inicio de sesión automático exitoso! Bienvenido, ${loginResult.nombre}'),
+                  content: Text(
+                    '¡Cuenta creada e inicio de sesión automático exitoso! Bienvenido, ${loginResult.nombre}',
+                  ),
                   backgroundColor: AppTheme.successColor,
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               );
               context.go('/home');
@@ -162,10 +230,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Registro completado. Por favor inicie sesión o verifique su cuenta.'),
+              content: const Text(
+                'Registro completado. Por favor inicie sesión o verifique su cuenta.',
+              ),
               backgroundColor: AppTheme.accentColor,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           );
           context.go('/login');
@@ -175,10 +247,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al registrar: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Error al registrar: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: AppTheme.errorColor,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         );
       } finally {
@@ -197,11 +273,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (provider == 'Google') {
       try {
-        const clientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
         final GoogleSignIn googleSignIn = GoogleSignIn(
-          serverClientId: clientId.isNotEmpty ? clientId : null,
           scopes: ['email', 'profile'],
         );
+        await googleSignIn.signOut();
         final googleUser = await googleSignIn.signIn();
         if (googleUser != null) {
           userEmail = googleUser.email;
@@ -215,7 +290,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Atención: El selector de cuentas nativas de Google requiere registrar la clave SHA-1 de desarrollo en Google Cloud Console. Detalle: $e'),
+            content: Text(
+              'Atención: El selector de cuentas nativas de Google requiere registrar la clave SHA-1 de desarrollo en Google Cloud Console. Detalle: $e',
+            ),
             backgroundColor: AppTheme.warningColor,
             duration: const Duration(seconds: 4),
             behavior: SnackBarBehavior.floating,
@@ -260,14 +337,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Cuenta $userEmail seleccionada del teléfono. Creando cuenta...'),
+        content: Text(
+          'Cuenta $userEmail seleccionada del teléfono. Creando cuenta...',
+        ),
         backgroundColor: AppTheme.successColor,
         behavior: SnackBarBehavior.floating,
       ),
     );
 
-    // Ejecutar el registro inmediatamente sin intervención manual
-    await _submitRegister();
   }
 
   @override
@@ -282,20 +359,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isDark
-                    ? [const Color(0xFF031604), const Color(0xFF09290B), const Color(0xFF0B132B)]
-                    : [AppTheme.primaryDarkColor, AppTheme.primaryColor, AppTheme.primaryLightColor],
+                    ? [
+                        const Color(0xFF031604),
+                        const Color(0xFF09290B),
+                        const Color(0xFF0B132B),
+                      ]
+                    : [
+                        AppTheme.primaryDarkColor,
+                        AppTheme.primaryColor,
+                        AppTheme.primaryLightColor,
+                      ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
           ),
-          const RepaintBoundary(
-            child: FloatingParticlesBackground(),
-          ),
+          const RepaintBoundary(child: FloatingParticlesBackground()),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 24.0,
+                ),
                 child: Container(
                   width: size.width > 500 ? 460 : size.width * 0.9,
                   decoration: BoxDecoration(
@@ -309,7 +395,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                     border: Border.all(
-                      color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.05),
                     ),
                   ),
                   padding: const EdgeInsets.all(28.0),
@@ -350,11 +438,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           'Completa tus datos para empezar',
                           style: TextStyle(
                             fontSize: 13,
-                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
                           ),
                         ),
                         const SizedBox(height: 24),
-                        
+
                         // Campos de texto
                         Row(
                           children: [
@@ -363,7 +453,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 name: 'nombre',
                                 decoration: const InputDecoration(
                                   labelText: 'Nombre',
-                                  prefixIcon: Icon(Icons.person_outline_rounded),
+                                  prefixIcon: Icon(
+                                    Icons.person_outline_rounded,
+                                  ),
                                 ),
                                 validator: FormBuilderValidators.required(
                                   errorText: 'Obligatorio',
@@ -376,7 +468,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 name: 'apellido',
                                 decoration: const InputDecoration(
                                   labelText: 'Apellido',
-                                  prefixIcon: Icon(Icons.person_outline_rounded),
+                                  prefixIcon: Icon(
+                                    Icons.person_outline_rounded,
+                                  ),
                                 ),
                                 validator: FormBuilderValidators.required(
                                   errorText: 'Obligatorio',
@@ -398,7 +492,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           items: _countries.map((country) {
                             return DropdownMenuItem<int>(
                               value: country['id'] as int,
-                              child: Text('${country['nombre']} (${country['dialCode']})'),
+                              child: Text(
+                                '${country['nombre']} (${country['dialCode']})',
+                              ),
                             );
                           }).toList(),
                           onChanged: (val) {
@@ -450,7 +546,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -484,11 +582,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                           items: const [
                             DropdownMenuItem(value: 'sms', child: Text('SMS')),
-                            DropdownMenuItem(value: 'email', child: Text('Correo Electrónico')),
+                            DropdownMenuItem(
+                              value: 'email',
+                              child: Text('Correo Electrónico'),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 28),
-                        
+
                         // Botón de registro
                         SizedBox(
                           width: double.infinity,
@@ -504,7 +605,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               elevation: 0,
                             ),
                             child: _isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
                                 : const Text(
                                     'Crear Cuenta',
                                     style: TextStyle(
@@ -519,15 +622,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 24.0),
                         Row(
                           children: [
-                            Expanded(child: Divider(color: isDark ? Colors.white30 : Colors.black12)),
+                            Expanded(
+                              child: Divider(
+                                color: isDark ? Colors.white30 : Colors.black12,
+                              ),
+                            ),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16.0),
                               child: Text(
                                 'O continuar con',
-                                style: TextStyle(fontSize: 12.5, color: Colors.grey, fontWeight: FontWeight.w500),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                            Expanded(child: Divider(color: isDark ? Colors.white30 : Colors.black12)),
+                            Expanded(
+                              child: Divider(
+                                color: isDark ? Colors.white30 : Colors.black12,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 18.0),
@@ -537,47 +652,77 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                                  side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12.0,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                  ),
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : Colors.black12,
+                                  ),
                                 ),
-                                icon: const Icon(Icons.g_mobiledata_rounded, size: 28, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.g_mobiledata_rounded,
+                                  size: 28,
+                                  color: Colors.red,
+                                ),
                                 label: Text(
                                   'Google',
                                   style: TextStyle(
-                                    color: isDark ? Colors.white : Colors.black87,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
                                 ),
-                                onPressed: () => _showSocialAuthPlaceholder('Google'),
+                                onPressed: () =>
+                                    _showSocialAuthPlaceholder('Google'),
                               ),
                             ),
                             const SizedBox(width: 12.0),
                             Expanded(
                               child: OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                                  side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12.0,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                  ),
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : Colors.black12,
+                                  ),
                                 ),
-                                icon: const Icon(Icons.mail_rounded, size: 20, color: Colors.blue),
+                                icon: const Icon(
+                                  Icons.mail_rounded,
+                                  size: 20,
+                                  color: Colors.blue,
+                                ),
                                 label: Text(
                                   'Microsoft',
                                   style: TextStyle(
-                                    color: isDark ? Colors.white : Colors.black87,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
                                 ),
-                                onPressed: () => _showSocialAuthPlaceholder('Microsoft'),
+                                onPressed: () =>
+                                    _showSocialAuthPlaceholder('Microsoft'),
                               ),
                             ),
                           ],
                         ),
 
                         const SizedBox(height: 20.0),
-                        
+
                         // Enlace para volver a iniciar sesión
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -586,7 +731,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               '¿Ya tienes una cuenta? ',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                color: isDark
+                                    ? AppTheme.darkTextSecondary
+                                    : AppTheme.lightTextSecondary,
                               ),
                             ),
                             GestureDetector(

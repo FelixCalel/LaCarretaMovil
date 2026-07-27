@@ -147,6 +147,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           data: {
             'nombre': _nombresController.text.trim(),
             'apellido': _apellidosController.text.trim(),
+            'telefono': _telefonoController.text.trim(),
           },
         );
 
@@ -473,15 +474,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Campos Deshabilitados
+                      // Campo de Teléfono Editable
                       TextFormField(
                         controller: _telefonoController,
-                        enabled: false,
-                        decoration: InputDecoration(
+                        enabled: true,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
                           labelText: 'Teléfono',
-                          prefixIcon: const Icon(Icons.phone_outlined),
-                          helperText: 'El teléfono no se puede modificar.',
-                          helperStyle: TextStyle(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                          prefixIcon: Icon(Icons.phone_outlined),
                         ),
                       ),
                       const SizedBox(height: 16),

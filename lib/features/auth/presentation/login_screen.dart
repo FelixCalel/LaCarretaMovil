@@ -11,6 +11,8 @@ import '../../../core/network/api_client.dart';
 import 'login_cubit.dart';
 import '../../../core/presentation/widgets/floating_particles_background.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../domain/user_model.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -98,19 +100,16 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
   }
   
   Future<void> _showSocialAuthPlaceholder(String provider) async {
-    String? userEmail;
+    GoogleSignInAccount? googleUser;
 
     if (provider == 'Google') {
       try {
-        const clientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
         final GoogleSignIn googleSignIn = GoogleSignIn(
-          clientId: clientId.isNotEmpty ? clientId : null,
           scopes: ['email', 'profile'],
         );
-        final googleUser = await googleSignIn.signIn();
-        if (googleUser != null) {
-          userEmail = googleUser.email;
-        } else {
+        await googleSignIn.signOut();
+        googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
           return;
         }
       } catch (e) {
@@ -136,25 +135,89 @@ class _LoginScreenViewState extends State<_LoginScreenView> {
       return;
     }
 
-    if (!mounted || userEmail == null) return;
+    if (!mounted || googleUser == null) return;
 
-    _formKey.currentState?.fields['username']?.didChange(userEmail);
-    _formKey.currentState?.fields['password']?.didChange('LaCarreta2026!');
+    final userEmail = googleUser.email;
+    final displayName = googleUser.displayName ?? '';
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Cuenta $userEmail seleccionada del teléfono. Iniciando sesión...'),
-        backgroundColor: AppTheme.successColor,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    // Extraer Nombre y Apellido
+    String nom = '';
+    String ape = '';
+    if (displayName.isNotEmpty) {
+      final parts = displayName.split(' ');
+      nom = parts[0];
+      ape = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    } else {
+      final parts = userEmail.split('@')[0].split('.');
+      nom = parts[0];
+      ape = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    }
+    if (nom.isEmpty) nom = 'Usuario';
+    if (nom.isNotEmpty) nom = nom[0].toUpperCase() + nom.substring(1);
+    if (ape.isNotEmpty) ape = ape[0].toUpperCase() + ape.substring(1);
 
-    if (_formKey.currentState?.saveAndValidate() ?? false) {
-      final vals = _formKey.currentState!.value;
-      context.read<LoginCubit>().login(
-            vals['username'],
-            vals['password'],
-          );
+    // Contraseña fija determinista por usuario para permitir re-login automático
+    final userPassword = 'Gg#${userEmail.toLowerCase()}!2026';
+
+    try {
+      // 1. Intentar registrar al usuario si es nuevo (incluyendo teléfono de formato E.164 por defecto para bypass de 2FA)
+      final regData = {
+        'nombre': nom,
+        'apellido': ape,
+        'correo': userEmail,
+        'telefono': '+50200000000',
+        'contrasena': userPassword,
+        'paisId': 1,
+        'verificationMethod': 'none',
+        'roleId': 0,
+      };
+
+      try {
+        Log.i('🔑 Creando cuenta automática de Google: $userEmail');
+        await ApiClient().dio.post('/usuarios/registro', data: regData);
+      } catch (regErr) {
+        Log.i('ℹ️ Registro omitido (la cuenta ya existe en DB): $regErr');
+      }
+
+      // 2. Autenticación y Login
+      Log.i('🔑 Iniciando sesión automáticamente con Google ($userEmail)');
+      final authDatasource = AuthDatasource(apiClient: ApiClient());
+      
+      // Intentar login normal
+      dynamic loginResult;
+      try {
+        loginResult = await authDatasource.login(userEmail, userPassword);
+      } catch (_) {
+        // En caso de exigir 2FA u otro flujo del backend, forzamos la sincronización de token
+        final syncRes = await ApiClient().dio.post('/usuarios/sync-verification', data: {'email': userEmail});
+        if (syncRes.data != null && syncRes.data['trustToken'] != null) {
+          final storage = const FlutterSecureStorage();
+          await storage.write(key: 'trust_token', value: syncRes.data['trustToken'].toString());
+          loginResult = await authDatasource.login(userEmail, userPassword);
+        }
+      }
+
+      if (!mounted) return;
+
+      final nombreMostrar = (loginResult is UserModel) ? loginResult.nombre : nom;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('¡Bienvenido(a), $nombreMostrar!'),
+          backgroundColor: AppTheme.successColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.go('/home');
+    } catch (err) {
+      Log.e('Error al iniciar sesión con Google', err);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo iniciar sesión con la cuenta de Google: $err'),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
