@@ -25,6 +25,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   int? _userId;
   String? _avatarBase64;
 
+  String _codigoPais = '';
   final _nombresController = TextEditingController();
   final _apellidosController = TextEditingController();
   final _telefonoController = TextEditingController();
@@ -81,7 +82,47 @@ class _PerfilScreenState extends State<PerfilScreen> {
         Log.i('Parsed User ID: $_userId');
         _nombresController.text = (userData['nombre'] ?? '').toString();
         _apellidosController.text = (userData['apellido'] ?? '').toString();
-        _telefonoController.text = (userData['telefono'] ?? '').toString();
+
+        final rawPhone = (userData['telefono'] ?? '').toString().trim();
+        String matchedDial = '';
+        String matchedNumber = rawPhone;
+
+        try {
+          final paisesResp = await ApiClient().dio.get('/pais/todos');
+          final List<dynamic> paisesList = paisesResp.data is List ? paisesResp.data : [];
+          final sortedPaises = [...paisesList]..sort((a, b) {
+              final aCode = (a['dialCode'] ?? '').toString().replaceAll(' ', '');
+              final bCode = (b['dialCode'] ?? '').toString().replaceAll(' ', '');
+              return bCode.length.compareTo(aCode.length);
+            });
+
+          for (final p in sortedPaises) {
+            String dial = (p['dialCode'] ?? '').toString().replaceAll(' ', '');
+            if (dial.isEmpty) continue;
+            if (!dial.startsWith('+')) dial = '+$dial';
+
+            if (rawPhone.startsWith(dial)) {
+              matchedDial = dial;
+              matchedNumber = rawPhone.substring(dial.length);
+              break;
+            }
+          }
+        } catch (paisErr) {
+          Log.w('No se pudo cargar la lista de países para coincidir prefijo: $paisErr');
+        }
+
+        if (matchedDial.isEmpty) {
+          // Fallback seguro a prefijos comunes de Centroamérica/Latam de 3 o 4 caracteres (+502, +503, etc.)
+          final match = RegExp(r'^(\+(?:502|503|504|505|506|501|52|1))(\d+)$').firstMatch(rawPhone);
+          if (match != null) {
+            matchedDial = match.group(1) ?? '';
+            matchedNumber = match.group(2) ?? '';
+          }
+        }
+
+        _codigoPais = matchedDial;
+        _telefonoController.text = matchedNumber;
+
         _correoController.text = (userData['correo'] ?? '').toString();
       }
 
@@ -142,12 +183,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
       });
 
       try {
+        final telefonoCompleto = '$_codigoPais${_telefonoController.text.trim()}';
         await ApiClient().dio.put(
           '/usuarios/$_userId',
           data: {
             'nombre': _nombresController.text.trim(),
             'apellido': _apellidosController.text.trim(),
-            'telefono': _telefonoController.text.trim(),
+            'telefono': telefonoCompleto,
           },
         );
 
@@ -479,9 +521,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         controller: _telefonoController,
                         enabled: true,
                         keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Teléfono',
-                          prefixIcon: Icon(Icons.phone_outlined),
+                          prefixIcon: const Icon(Icons.phone_outlined),
+                          prefixText: _codigoPais.isNotEmpty ? '$_codigoPais  ' : null,
+                          prefixStyle: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
