@@ -100,21 +100,52 @@ class PedidoCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5.0),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: Text(
-                        _getStatusText(pedido.estadoNombre),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11.0,
-                          letterSpacing: 0.5,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!pedido.synced) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12.0),
+                              border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.5)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.cloud_off_rounded, size: 13, color: Colors.amber.shade800),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'OFFLINE',
+                                  style: TextStyle(
+                                    color: Colors.amber.shade900,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10.0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5.0),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
+                          child: Text(
+                            _getStatusText(pedido.estadoNombre),
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11.0,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),

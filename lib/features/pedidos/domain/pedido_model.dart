@@ -11,6 +11,7 @@ class PedidoModel {
   final String estadoNombre;
   final int? docNum;
   final int? usuarioId;
+  final bool synced;
 
   PedidoModel({
     required this.id,
@@ -25,9 +26,10 @@ class PedidoModel {
     required this.estadoNombre,
     this.docNum,
     this.usuarioId,
+    this.synced = true,
   });
 
-  factory PedidoModel.fromJson(Map<String, dynamic> json) {
+  factory PedidoModel.fromJson(Map<String, dynamic> json, {bool synced = true}) {
     final estadoIdVal = json['estadoId'] as int;
     String statusName = '';
     if (json['tipoEstado'] != null && json['tipoEstado']['nombre'] != null) {
@@ -70,6 +72,25 @@ class PedidoModel {
       estadoNombre: statusName,
       docNum: json['docNum'] as int?,
       usuarioId: json['usuarioId'] ?? json['usuario_id'],
+      synced: synced,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'deudorId': deudorId,
+      'tiendaId': tiendaId,
+      'estadoId': estadoId,
+      'creadoEl': creadoEl.toIso8601String(),
+      'comentario': comentario,
+      'comentarioDisplay': comentarioDisplay,
+      'nombreDeu': deudorNombre,
+      'nombreTienda': tiendaNombre,
+      'tipoEstado': {'nombre': estadoNombre},
+      'docNum': docNum,
+      'usuarioId': usuarioId,
+      'synced': synced,
+    };
   }
 }

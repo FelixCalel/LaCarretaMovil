@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../config/environment.dart';
 import '../network/api_client.dart';
 import '../presentation/models/notification_model.dart';
@@ -37,11 +38,15 @@ class NotificationService {
       return;
     }
 
+    final conn = await Connectivity().checkConnectivity();
+    if (conn.contains(ConnectivityResult.none)) {
+      _isConnecting = false;
+      return;
+    }
+
     final apiUrl = Environment.apiBaseUrl;
     final wsBase = '${apiUrl.replaceFirst(RegExp(r'^http'), 'ws').replaceFirst('/api', '')}/ws';
     final wsUrl = '$wsBase?userId=$userId';
-
-    Log.i('🔌 Conectando a WebSocket: $wsUrl');
 
     try {
       _webSocket = await WebSocket.connect(wsUrl);
@@ -53,17 +58,14 @@ class NotificationService {
           _handleIncomingData(data);
         },
         onError: (error) {
-          Log.e('❌ Error en WebSocket', error);
           _handleDisconnect();
         },
         onDone: () {
-          Log.w('🔌 Conexión WebSocket cerrada');
           _handleDisconnect();
         },
       );
     } catch (e) {
       _isConnecting = false;
-      Log.e('❌ Error al conectar a WebSocket', e);
       _handleDisconnect();
     }
   }

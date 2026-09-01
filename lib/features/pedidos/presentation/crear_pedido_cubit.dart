@@ -12,7 +12,8 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
   final _storage = const FlutterSecureStorage();
   StreamSubscription<Map<String, dynamic>>? _wsSubscription;
 
-  CrearPedidoCubit({required this.datasource}) : super(const CrearPedidoState()) {
+  CrearPedidoCubit({required this.datasource})
+    : super(const CrearPedidoState()) {
     _listenToWS();
   }
 
@@ -26,12 +27,16 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
         } else if (type == 'order-detail-changed') {
           if (payload != null) {
             final pedidoIdRaw = payload['pedidoId'];
-            final pedidoId = pedidoIdRaw is int ? pedidoIdRaw : int.tryParse(pedidoIdRaw?.toString() ?? '');
+            final pedidoId = pedidoIdRaw is int
+                ? pedidoIdRaw
+                : int.tryParse(pedidoIdRaw?.toString() ?? '');
             if (pedidoId != null) {
               final isExpanded = state.expandedPedidos[pedidoId] ?? false;
               if (isExpanded) {
                 try {
-                  final pedido = state.draftPedidos.firstWhere((p) => p.id == pedidoId);
+                  final pedido = state.draftPedidos.firstWhere(
+                    (p) => p.id == pedidoId,
+                  );
                   loadPedidoDetails(pedidoId, pedido.deudorId, isSilent: true);
                 } catch (_) {}
               }
@@ -51,7 +56,11 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
       final userId = int.tryParse(userIdStr ?? '') ?? 0;
 
       final allPedidos = await datasource.getPedidos();
-      final draftPedidos = allPedidos.where((p) => p.estadoId == 1 && p.deudorId != 0 && p.usuarioId == userId).toList();
+      final draftPedidos = allPedidos
+          .where(
+            (p) => p.estadoId == 1 && p.deudorId != 0 && p.usuarioId == userId,
+          )
+          .toList();
 
       final ciudades = await datasource.getCiudades();
       final deudores = await datasource.getDeudores();
@@ -65,15 +74,22 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
         if (data != null) {
           final userJson = data['user'] ?? data['usuario'] ?? data;
           final rutas = userJson['rutas'] as List<dynamic>? ?? [];
-          userRoutes = rutas.map((r) => int.tryParse(r['id']?.toString() ?? '') ?? 0).where((id) => id != 0).toList();
+          userRoutes = rutas
+              .map((r) => int.tryParse(r['id']?.toString() ?? '') ?? 0)
+              .where((id) => id != 0)
+              .toList();
           userPaisId = int.tryParse(userJson['paisId']?.toString() ?? '') ?? 0;
-          
+
           await _storage.write(key: 'user_routes', value: userRoutes.join(','));
-          await _storage.write(key: 'user_pais_id', value: userPaisId.toString());
+          await _storage.write(
+            key: 'user_pais_id',
+            value: userPaisId.toString(),
+          );
         }
       } catch (_) {
         final userRoutesStr = await _storage.read(key: 'user_routes') ?? '';
-        userRoutes = userRoutesStr.split(',')
+        userRoutes = userRoutesStr
+            .split(',')
             .map((id) => int.tryParse(id) ?? 0)
             .where((id) => id != 0)
             .toList();
@@ -82,14 +98,16 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
         userPaisId = int.tryParse(userPaisIdStr ?? '') ?? 0;
       }
 
-      emit(state.copyWith(
-        draftPedidos: draftPedidos,
-        ciudades: ciudades,
-        deudores: deudores,
-        tiendas: tiendas,
-        userRoutes: userRoutes,
-        userPaisId: userPaisId,
-      ));
+      emit(
+        state.copyWith(
+          draftPedidos: draftPedidos,
+          ciudades: ciudades,
+          deudores: deudores,
+          tiendas: tiendas,
+          userRoutes: userRoutes,
+          userPaisId: userPaisId,
+        ),
+      );
 
       for (var p in draftPedidos) {
         if (state.expandedPedidos[p.id] == true) {
@@ -103,7 +121,11 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
     }
   }
 
-  Future<void> loadPedidoDetails(int pedidoId, int deudorId, {bool isSilent = false}) async {
+  Future<void> loadPedidoDetails(
+    int pedidoId,
+    int deudorId, {
+    bool isSilent = false,
+  }) async {
     if (!isSilent) {
       final loading = Map<int, bool>.from(state.loadingDetails);
       loading[pedidoId] = true;
@@ -112,21 +134,37 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
 
     try {
       final detalles = await datasource.getPedidoDetalles(pedidoId)
-        ..sort((a, b) => a.productoNombre.toLowerCase().compareTo(b.productoNombre.toLowerCase()));
-      final pedidoDetalles = Map<int, List<DetalleModel>>.from(state.pedidoDetalles);
+        ..sort(
+          (a, b) => a.productoNombre.toLowerCase().compareTo(
+            b.productoNombre.toLowerCase(),
+          ),
+        );
+      final pedidoDetalles = Map<int, List<DetalleModel>>.from(
+        state.pedidoDetalles,
+      );
       pedidoDetalles[pedidoId] = detalles;
 
-      final deudorProductos = Map<int, List<ProductoModel>>.from(state.deudorProductos);
+      final deudorProductos = Map<int, List<ProductoModel>>.from(
+        state.deudorProductos,
+      );
       if (!deudorProductos.containsKey(deudorId)) {
-        deudorProductos[deudorId] = await datasource.getDeudorProductos(deudorId);
+        deudorProductos[deudorId] = await datasource.getDeudorProductos(
+          deudorId,
+        );
       }
 
-      emit(state.copyWith(
-        pedidoDetalles: pedidoDetalles,
-        deudorProductos: deudorProductos,
-      ));
+      emit(
+        state.copyWith(
+          pedidoDetalles: pedidoDetalles,
+          deudorProductos: deudorProductos,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(error: 'Error cargando detalles del pedido $pedidoId: $e'));
+      emit(
+        state.copyWith(
+          error: 'Error cargando detalles del pedido $pedidoId: $e',
+        ),
+      );
     } finally {
       if (!isSilent) {
         final newLoading = Map<int, bool>.from(state.loadingDetails);
@@ -147,7 +185,11 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
     }
   }
 
-  Future<void> updateItemQuantity(int pedidoId, DetalleModel detail, int newQty) async {
+  Future<void> updateItemQuantity(
+    int pedidoId,
+    DetalleModel detail,
+    int newQty,
+  ) async {
     if (newQty < 1) return;
 
     // Optimistic Update
@@ -177,7 +219,8 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
     final detailsMap = Map<int, List<DetalleModel>>.from(state.pedidoDetalles);
     final detailsList = detailsMap[pedidoId];
     if (detailsList != null) {
-      final newList = List<DetalleModel>.from(detailsList)..removeWhere((d) => d.id == detail.id);
+      final newList = List<DetalleModel>.from(detailsList)
+        ..removeWhere((d) => d.id == detail.id);
       detailsMap[pedidoId] = newList;
       emit(state.copyWith(pedidoDetalles: detailsMap));
     }
@@ -233,10 +276,18 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
     }
   }
 
-  Future<void> realizarPedido(int pedidoId, String comentario, String fecha) async {
+  Future<void> realizarPedido(
+    int pedidoId,
+    String comentario,
+    String fecha,
+  ) async {
     final details = state.pedidoDetalles[pedidoId] ?? [];
     if (details.isEmpty) {
-      emit(state.copyWith(error: 'Agregue productos al pedido antes de realizarlo'));
+      emit(
+        state.copyWith(
+          error: 'Agregue productos al pedido antes de realizarlo',
+        ),
+      );
       return;
     }
 
@@ -268,20 +319,48 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
       final userIdStr = await _storage.read(key: 'user_id');
       final userId = int.tryParse(userIdStr ?? '') ?? 0;
 
+      final deudorObj = state.deudores
+          .where((d) => d.id == deudorId)
+          .firstOrNull;
+      final tiendaObj = state.tiendas
+          .where((t) => t.id == tiendaId)
+          .firstOrNull;
+
       final newPedido = await datasource.createPedido(
         deudorId: deudorId,
         tiendaId: tiendaId,
         ciudadId: ciudadId,
         usuarioId: userId,
+        deudorNombre: deudorObj?.nombre ?? '',
+        tiendaNombre: tiendaObj?.nombre ?? '',
       );
-      
+
       // Auto-populate items with quantity 0 for the new order
-      await datasource.populatePedidoModelo(
-        deudorId: deudorId,
-        pedidoId: newPedido.id,
-        tiendaId: tiendaId,
-      );
-      
+      try {
+        await datasource.populatePedidoModelo(
+          deudorId: deudorId,
+          pedidoId: newPedido.id,
+          tiendaId: tiendaId,
+        );
+      } catch (_) {}
+
+      // Si fue creado offline, precargar los productos del cliente en SQLite con cantidad 0
+      if (newPedido.id < 0) {
+        try {
+          final prods = await datasource.getDeudorProductos(deudorId);
+          final emptyDetalles = prods.map((p) => DetalleModel(
+            id: -(DateTime.now().millisecondsSinceEpoch % 2147483647),
+            pedidoId: newPedido.id,
+            productoId: p.id,
+            cantidad: 0,
+            precio: 0,
+            productoNombre: p.nombre,
+            productoCodigo: p.codigo,
+          )).toList();
+          await datasource.localDs.saveDetalles(newPedido.id, emptyDetalles);
+        } catch (_) {}
+      }
+
       emit(state.copyWith(successMessage: 'Borrador creado correctamente'));
       await loadData();
     } catch (e) {
@@ -300,14 +379,23 @@ class CrearPedidoCubit extends Cubit<CrearPedidoState> {
       final userIdStr = await _storage.read(key: 'user_id');
       final userId = int.tryParse(userIdStr ?? '') ?? 0;
 
+      final deudorObj = state.deudores.where((d) => d.id == deudorId).firstOrNull;
+      final tiendaObj = state.tiendas.where((t) => t.id == tiendaId).firstOrNull;
+
       await datasource.copiarUltimoPedido(
         deudorId: deudorId,
         tiendaId: tiendaId,
         ciudadId: ciudadId,
         usuarioId: userId,
+        deudorNombre: deudorObj?.nombre ?? '',
+        tiendaNombre: tiendaObj?.nombre ?? '',
       );
-      
-      emit(state.copyWith(successMessage: 'Borrador copiado correctamente del último pedido'));
+
+      emit(
+        state.copyWith(
+          successMessage: 'Borrador copiado correctamente del último pedido',
+        ),
+      );
       await loadData();
     } catch (e) {
       emit(state.copyWith(error: 'Error al copiar borrador: $e'));

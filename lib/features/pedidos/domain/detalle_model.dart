@@ -18,16 +18,22 @@ class DetalleModel {
   });
 
   DetalleModel copyWith({
+    int? id,
+    int? pedidoId,
+    int? productoId,
     int? cantidad,
+    double? precio,
+    String? productoNombre,
+    String? productoCodigo,
   }) {
     return DetalleModel(
-      id: id,
-      pedidoId: pedidoId,
-      productoId: productoId,
+      id: id ?? this.id,
+      pedidoId: pedidoId ?? this.pedidoId,
+      productoId: productoId ?? this.productoId,
       cantidad: cantidad ?? this.cantidad,
-      precio: precio,
-      productoNombre: productoNombre,
-      productoCodigo: productoCodigo,
+      precio: precio ?? this.precio,
+      productoNombre: productoNombre ?? this.productoNombre,
+      productoCodigo: productoCodigo ?? this.productoCodigo,
     );
   }
 

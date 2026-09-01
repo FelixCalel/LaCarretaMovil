@@ -14,21 +14,21 @@ class ApiClient {
   final List<void Function(String token)> _failedQueue = [];
 
   ApiClient._internal()
-      : dio = Dio(
-          BaseOptions(
-            baseUrl: Environment.apiBaseUrl,
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          ),
-        ) {
+    : dio = Dio(
+        BaseOptions(
+          baseUrl: Environment.apiBaseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      ) {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          Log.i('🌐 Solicitud HTTP: [${options.method}] ${options.path}');
+          Log.i('Solicitud HTTP: [${options.method}] ${options.path}');
           final token = await _storage.getAccessToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -36,20 +36,25 @@ class ApiClient {
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          Log.i('✅ Respuesta HTTP: [${response.statusCode}] ${response.requestOptions.path}');
+          Log.i(
+            'Respuesta HTTP: [${response.statusCode}] ${response.requestOptions.path}',
+          );
           return handler.next(response);
         },
         onError: (DioException e, handler) async {
           final requestOptions = e.requestOptions;
-          Log.w('❌ Error HTTP: [${e.response?.statusCode}] ${requestOptions.path}');
+          Log.w(
+            'Error HTTP: [${e.response?.statusCode}] ${requestOptions.path}',
+          );
 
           // Si el error es 401 y no es login ni refresh
           if (e.response?.statusCode == 401 &&
               !requestOptions.path.contains('/login/login') &&
               !requestOptions.path.contains('/login/refresh-token')) {
-            
             if (_isRefreshing) {
-              Log.w('🔄 Refresco de token en progreso, encolando petición: ${requestOptions.path}');
+              Log.w(
+                'Refresco de token en progreso, encolando petición: ${requestOptions.path}',
+              );
               _failedQueue.add((token) {
                 requestOptions.headers['Authorization'] = 'Bearer $token';
                 _retry(requestOptions).then(
@@ -61,7 +66,7 @@ class ApiClient {
             }
 
             _isRefreshing = true;
-            Log.w('🔑 Token de acceso expirado (401). Intentando refrescar...');
+            Log.w('Token de acceso expirado (401). Intentando refrescar...');
 
             try {
               final refreshToken = await _storage.getRefreshToken();
@@ -69,7 +74,9 @@ class ApiClient {
                 throw DioException(requestOptions: requestOptions);
               }
 
-              final refreshDio = Dio(BaseOptions(baseUrl: Environment.apiBaseUrl));
+              final refreshDio = Dio(
+                BaseOptions(baseUrl: Environment.apiBaseUrl),
+              );
               final response = await refreshDio.post(
                 '/login/refresh-token',
                 data: {'refreshToken': refreshToken},
@@ -79,10 +86,14 @@ class ApiClient {
               await _storage.saveAccessToken(newAccessToken);
 
               if (response.data['refreshToken'] != null) {
-                await _storage.saveRefreshToken(response.data['refreshToken'] as String);
+                await _storage.saveRefreshToken(
+                  response.data['refreshToken'] as String,
+                );
               }
 
-              Log.i('🔑 Token refrescado con éxito. Liberando cola de peticiones...');
+              Log.i(
+                'Token refrescado con éxito. Liberando cola de peticiones...',
+              );
               _isRefreshing = false;
 
               // Desencolar y ejecutar las fallidas
@@ -92,11 +103,12 @@ class ApiClient {
               _failedQueue.clear();
 
               // Reintentar la petición actual
-              requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+              requestOptions.headers['Authorization'] =
+                  'Bearer $newAccessToken';
               final retryResponse = await _retry(requestOptions);
               return handler.resolve(retryResponse);
             } catch (err) {
-              Log.e('🚨 Falló el refresco del token. Deslogueando...', err);
+              Log.e('Falló el refresco del token. Deslogueando...', err);
               _isRefreshing = false;
               _failedQueue.clear();
               await _storage.clearAuthData();

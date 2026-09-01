@@ -17,6 +17,7 @@ import 'models/modulo_model.dart';
 import 'models/opcion_model.dart';
 import 'widgets/main_drawer.dart';
 import 'widgets/main_bottom_nav.dart';
+import '../services/sync_service.dart';
 
 class MainLayout extends StatefulWidget {
   final String title;
@@ -43,10 +44,10 @@ class _MainLayoutState extends State<MainLayout> {
   List<ModuloModel> _groupedModules = [];
   String? _avatarBase64;
 
-  // Variables de conectividad
   bool _isConnected = true;
   bool _showConnectionBanner = false;
-  late final StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+  late final StreamSubscription<List<ConnectivityResult>>
+  _connectivitySubscription;
 
   @override
   void initState() {
@@ -54,6 +55,8 @@ class _MainLayoutState extends State<MainLayout> {
     _loadUserInfo();
     _initConnectivityListener();
     _checkForShorebirdUpdates();
+    SyncService().initAutoSyncListener();
+    SyncService().syncAll(silent: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final cubit = context.read<NotificationsCubit>();
@@ -64,7 +67,9 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   void _initConnectivityListener() {
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
       final hasConnection = !results.contains(ConnectivityResult.none);
       if (hasConnection != _isConnected) {
         setState(() {
@@ -72,8 +77,22 @@ class _MainLayoutState extends State<MainLayout> {
           _showConnectionBanner = true;
         });
 
-        // Ocultar banner de "Conectado" después de 3 segundos
+        // Ocultar banner de "Conectado" después de 3 segundos y sincronizar
         if (hasConnection) {
+          SyncService().syncAll(silent: false).then((res) {
+            if (res.syncedMutations > 0 && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '✅ Sincronizados ${res.syncedMutations} pedidos pendientes.',
+                  ),
+                  backgroundColor: Colors.green.shade800,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          });
+
           Future.delayed(const Duration(seconds: 3), () {
             if (mounted && _isConnected) {
               setState(() {
@@ -108,11 +127,16 @@ class _MainLayoutState extends State<MainLayout> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Actualización disponible'),
-        content: const Text('Se ha descargado una actualización del sistema. ¿Deseas reiniciar la aplicación ahora para aplicar los cambios?'),
+        content: const Text(
+          'Se ha descargado una actualización del sistema. ¿Deseas reiniciar la aplicación ahora para aplicar los cambios?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Más tarde', style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              'Más tarde',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -120,7 +144,10 @@ class _MainLayoutState extends State<MainLayout> {
               SystemNavigator.pop();
             },
             style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
-            child: const Text('Reiniciar', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Reiniciar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -163,14 +190,18 @@ class _MainLayoutState extends State<MainLayout> {
 
         if (op != null && op['id'] != null) {
           final opcionId = int.tryParse(op['id'].toString()) ?? 0;
-          final yaExiste = modulosMap[moduloId]!.opciones.any((o) => o.id == opcionId);
+          final yaExiste = modulosMap[moduloId]!.opciones.any(
+            (o) => o.id == opcionId,
+          );
           if (!yaExiste) {
-            modulosMap[moduloId]!.opciones.add(OpcionModel(
-              id: opcionId,
-              nombre: op['nombre']?.toString() ?? '',
-              ruta: op['ruta']?.toString() ?? '',
-              icono: op['icono']?.toString() ?? '',
-            ));
+            modulosMap[moduloId]!.opciones.add(
+              OpcionModel(
+                id: opcionId,
+                nombre: op['nombre']?.toString() ?? '',
+                ruta: op['ruta']?.toString() ?? '',
+                icono: op['icono']?.toString() ?? '',
+              ),
+            );
           }
         }
       }
@@ -186,14 +217,54 @@ class _MainLayoutState extends State<MainLayout> {
           nombre: "Administración",
           icono: "MdPerson",
           opciones: [
-            OpcionModel(id: 1, nombre: "Pais", ruta: "/pais/listar", icono: "MdApproval"),
-            OpcionModel(id: 2, nombre: "Departamento", ruta: "/ciudad/listar", icono: "BsFillHouseDoorFill"),
-            OpcionModel(id: 3, nombre: "Rutas", ruta: "/ruta/listar", icono: "FaShippingFast"),
-            OpcionModel(id: 4, nombre: "Tienda", ruta: "/tienda/listar", icono: "MdShoppingCart"),
-            OpcionModel(id: 5, nombre: "Empresa", ruta: "/empresa/listar", icono: "BsGraphUp"),
-            OpcionModel(id: 8, nombre: "Deus", ruta: "/deus/listar", icono: "BsPersonCheckFill"),
-            OpcionModel(id: 10, nombre: "Productos", ruta: "/items/listar", icono: "FiArchive"),
-            OpcionModel(id: 16, nombre: "Usuarios", ruta: "/admin/usuarios", icono: "FaUsers"),
+            OpcionModel(
+              id: 1,
+              nombre: "Pais",
+              ruta: "/pais/listar",
+              icono: "MdApproval",
+            ),
+            OpcionModel(
+              id: 2,
+              nombre: "Departamento",
+              ruta: "/ciudad/listar",
+              icono: "BsFillHouseDoorFill",
+            ),
+            OpcionModel(
+              id: 3,
+              nombre: "Rutas",
+              ruta: "/ruta/listar",
+              icono: "FaShippingFast",
+            ),
+            OpcionModel(
+              id: 4,
+              nombre: "Tienda",
+              ruta: "/tienda/listar",
+              icono: "MdShoppingCart",
+            ),
+            OpcionModel(
+              id: 5,
+              nombre: "Empresa",
+              ruta: "/empresa/listar",
+              icono: "BsGraphUp",
+            ),
+            OpcionModel(
+              id: 8,
+              nombre: "Deus",
+              ruta: "/deus/listar",
+              icono: "BsPersonCheckFill",
+            ),
+            OpcionModel(
+              id: 10,
+              nombre: "Productos",
+              ruta: "/items/listar",
+              icono: "FiArchive",
+            ),
+            OpcionModel(
+              id: 16,
+              nombre: "Usuarios",
+              ruta: "/admin/usuarios",
+              icono: "FaUsers",
+            ),
           ],
         ),
         ModuloModel(
@@ -201,8 +272,18 @@ class _MainLayoutState extends State<MainLayout> {
           nombre: "Pedido",
           icono: "FaTools",
           opciones: [
-            OpcionModel(id: 6, nombre: "Crear Pedido", ruta: "/pedido/listar", icono: "FaClipboardList"),
-            OpcionModel(id: 11, nombre: "Historial Pedido", ruta: "/historialPedido/listar", icono: "MdEvent"),
+            OpcionModel(
+              id: 6,
+              nombre: "Crear Pedido",
+              ruta: "/pedido/listar",
+              icono: "FaClipboardList",
+            ),
+            OpcionModel(
+              id: 11,
+              nombre: "Historial Pedido",
+              ruta: "/historialPedido/listar",
+              icono: "MdEvent",
+            ),
           ],
         ),
         ModuloModel(
@@ -210,9 +291,24 @@ class _MainLayoutState extends State<MainLayout> {
           nombre: "Ventas",
           icono: "FiShoppingCart",
           opciones: [
-            OpcionModel(id: 7, nombre: "Pedidos Entrantes", ruta: "/pedidos/entrantes", icono: "FaCheckCircle"),
-            OpcionModel(id: 11, nombre: "Historial Pedido", ruta: "/historialPedido/listar", icono: "MdEvent"),
-            OpcionModel(id: 12, nombre: "Exportar Pedido", ruta: "/exportarPedido/listar", icono: "FaBook"),
+            OpcionModel(
+              id: 7,
+              nombre: "Pedidos Entrantes",
+              ruta: "/pedidos/entrantes",
+              icono: "FaCheckCircle",
+            ),
+            OpcionModel(
+              id: 11,
+              nombre: "Historial Pedido",
+              ruta: "/historialPedido/listar",
+              icono: "MdEvent",
+            ),
+            OpcionModel(
+              id: 12,
+              nombre: "Exportar Pedido",
+              ruta: "/exportarPedido/listar",
+              icono: "FaBook",
+            ),
           ],
         ),
         ModuloModel(
@@ -220,9 +316,24 @@ class _MainLayoutState extends State<MainLayout> {
           nombre: "Compras",
           icono: "FaCashRegister",
           opciones: [
-            OpcionModel(id: 13, nombre: "Comprador", ruta: "/comprasPedidos/listar", icono: "MdAssignmentTurnedIn"),
-            OpcionModel(id: 14, nombre: "Jefe de compras", ruta: "/comprador/listar", icono: "AiOutlinePhone"),
-            OpcionModel(id: 15, nombre: "Control de Calidad", ruta: "/ControlCalidad/listar", icono: "FiClipboard"),
+            OpcionModel(
+              id: 13,
+              nombre: "Comprador",
+              ruta: "/comprasPedidos/listar",
+              icono: "MdAssignmentTurnedIn",
+            ),
+            OpcionModel(
+              id: 14,
+              nombre: "Jefe de compras",
+              ruta: "/comprador/listar",
+              icono: "AiOutlinePhone",
+            ),
+            OpcionModel(
+              id: 15,
+              nombre: "Control de Calidad",
+              ruta: "/ControlCalidad/listar",
+              icono: "FiClipboard",
+            ),
           ],
         ),
         ModuloModel(
@@ -230,7 +341,12 @@ class _MainLayoutState extends State<MainLayout> {
           nombre: "Gestión área",
           icono: "FiClipboard",
           opciones: [
-            OpcionModel(id: 18, nombre: "Asignación de Áreas", ruta: "/asignacion-areas", icono: "FaNetworkWired"),
+            OpcionModel(
+              id: 18,
+              nombre: "Asignación de Áreas",
+              ruta: "/asignacion-areas",
+              icono: "FaNetworkWired",
+            ),
           ],
         ),
         ModuloModel(
@@ -238,7 +354,12 @@ class _MainLayoutState extends State<MainLayout> {
           nombre: "Orden de Producción",
           icono: "AiFillDashboard",
           opciones: [
-            OpcionModel(id: 23, nombre: "Pendiente", ruta: "/produccion/orden", icono: "FiArchive"),
+            OpcionModel(
+              id: 23,
+              nombre: "Pendiente",
+              ruta: "/produccion/orden",
+              icono: "FiArchive",
+            ),
           ],
         ),
       ]);
@@ -255,7 +376,9 @@ class _MainLayoutState extends State<MainLayout> {
     final userId = await _storage.getUserId();
     if (userId != null && avatar == null) {
       try {
-        final avatarResponse = await ApiClient().dio.get('/usuarios/$userId/avatar');
+        final avatarResponse = await ApiClient().dio.get(
+          '/usuarios/$userId/avatar',
+        );
         final av = avatarResponse.data['avatar'] as String?;
         if (av != null && av.isNotEmpty) {
           setState(() {
@@ -292,8 +415,10 @@ class _MainLayoutState extends State<MainLayout> {
     }
 
     final themeMode = context.watch<ThemeCubit>().state;
-    final isDark = themeMode == ThemeMode.dark ||
-        (themeMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
+    final isDark =
+        themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            MediaQuery.of(context).platformBrightness == Brightness.dark);
 
     actionsList.add(
       BlocBuilder<NotificationsCubit, NotificationsState>(
@@ -363,11 +488,13 @@ class _MainLayoutState extends State<MainLayout> {
             backgroundColor: notif.tipo == 'success'
                 ? Colors.green.shade800
                 : notif.tipo == 'error'
-                    ? Colors.red.shade800
-                    : notif.tipo == 'warning'
-                        ? Colors.orange.shade800
-                        : Theme.of(context).primaryColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ? Colors.red.shade800
+                : notif.tipo == 'warning'
+                ? Colors.orange.shade800
+                : Theme.of(context).primaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             margin: const EdgeInsets.all(12),
             content: Row(
               children: [
@@ -375,10 +502,10 @@ class _MainLayoutState extends State<MainLayout> {
                   notif.tipo == 'success'
                       ? Icons.check_circle
                       : notif.tipo == 'error'
-                          ? Icons.error
-                          : notif.tipo == 'warning'
-                              ? Icons.warning
-                              : Icons.info,
+                      ? Icons.error
+                      : notif.tipo == 'warning'
+                      ? Icons.warning
+                      : Icons.info,
                   color: Colors.white,
                 ),
                 const SizedBox(width: 12),
@@ -389,11 +516,17 @@ class _MainLayoutState extends State<MainLayout> {
                     children: [
                       Text(
                         notif.titulo,
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       Text(
                         notif.mensaje,
-                        style: const TextStyle(fontSize: 12, color: Colors.white),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
@@ -445,7 +578,9 @@ class _MainLayoutState extends State<MainLayout> {
                       ),
                       const SizedBox(width: 8.0),
                       Text(
-                        _isConnected ? 'Conexión restablecida' : 'Sin conexión a Internet',
+                        _isConnected
+                            ? 'Conexión restablecida'
+                            : 'Sin conexión a Internet',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13.0,
@@ -459,14 +594,15 @@ class _MainLayoutState extends State<MainLayout> {
             Expanded(
               child: PageTransitionSwitcher(
                 duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, primaryAnimation, secondaryAnimation) {
-                  return FadeThroughTransition(
-                    animation: primaryAnimation,
-                    secondaryAnimation: secondaryAnimation,
-                    fillColor: Colors.transparent,
-                    child: child,
-                  );
-                },
+                transitionBuilder:
+                    (child, primaryAnimation, secondaryAnimation) {
+                      return FadeThroughTransition(
+                        animation: primaryAnimation,
+                        secondaryAnimation: secondaryAnimation,
+                        fillColor: Colors.transparent,
+                        child: child,
+                      );
+                    },
                 child: KeyedSubtree(
                   key: ValueKey(location),
                   child: widget.body,
@@ -476,7 +612,8 @@ class _MainLayoutState extends State<MainLayout> {
           ],
         ),
         floatingActionButton: widget.floatingActionButton,
-        bottomNavigationBar: _groupedModules.any((m) => m.id == 2 || m.id == 3 || m.id == 13)
+        bottomNavigationBar:
+            _groupedModules.any((m) => m.id == 2 || m.id == 3 || m.id == 13)
             ? MainBottomNav(
                 groupedModules: _groupedModules,
                 location: location,
@@ -506,4 +643,3 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 }
-

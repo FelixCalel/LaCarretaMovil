@@ -16,7 +16,12 @@ class LoginSuccess extends LoginState {
   final bool promptBiometrics;
   final String savedUsername;
   final String savedPassword;
-  LoginSuccess(this.user, {this.promptBiometrics = false, this.savedUsername = '', this.savedPassword = ''});
+  LoginSuccess(
+    this.user, {
+    this.promptBiometrics = false,
+    this.savedUsername = '',
+    this.savedPassword = '',
+  });
 }
 
 class Login2FARequired extends LoginState {
@@ -24,7 +29,12 @@ class Login2FARequired extends LoginState {
   final String maskedPhone;
   final String username;
   final String password;
-  Login2FARequired({required this.userId, required this.maskedPhone, required this.username, required this.password});
+  Login2FARequired({
+    required this.userId,
+    required this.maskedPhone,
+    required this.username,
+    required this.password,
+  });
 }
 
 class LoginFailure extends LoginState {
@@ -52,13 +62,13 @@ class LoginCubit extends Cubit<LoginState> {
       Log.i('=== DEBUG BIOMETRICS ===');
       Log.i('Saved user: $savedUser');
       Log.i('Saved pass length: ${savedPass?.length ?? 0}');
-      
+
       if (savedUser != null && savedPass != null) {
         final canCheck = await _localAuth.canCheckBiometrics;
         final isSupported = await _localAuth.isDeviceSupported();
         Log.i('canCheckBiometrics: $canCheck');
         Log.i('isDeviceSupported: $isSupported');
-        
+
         if (canCheck || isSupported) {
           Log.i('Emitting BiometricsReady(true)');
           emit(BiometricsReady(true, savedUsername: savedUser));
@@ -94,12 +104,14 @@ class LoginCubit extends Cubit<LoginState> {
         emit(LoginLoading());
         final result = await authDatasource.login(savedUser, savedPass);
         if (result is Map && result['status'] == '2fa_required') {
-          emit(Login2FARequired(
-            userId: result['userId'] as int,
-            maskedPhone: result['maskedPhone'] as String,
-            username: savedUser,
-            password: savedPass,
-          ));
+          emit(
+            Login2FARequired(
+              userId: result['userId'] as int,
+              maskedPhone: result['maskedPhone'] as String,
+              username: savedUser,
+              password: savedPass,
+            ),
+          );
         } else if (result is UserModel) {
           emit(LoginSuccess(result));
         }
@@ -107,7 +119,9 @@ class LoginCubit extends Cubit<LoginState> {
     } catch (e) {
       final savedUser = await _storage.getBioUser();
       Log.e('Error al autenticar con huella', e);
-      emit(LoginFailure('Error al autenticar con huella. Intente con contraseña.'));
+      emit(
+        LoginFailure('Error al autenticar con huella. Intente con contraseña.'),
+      );
       emit(BiometricsReady(true, savedUsername: savedUser));
     }
   }
@@ -116,21 +130,36 @@ class LoginCubit extends Cubit<LoginState> {
     emit(LoginLoading());
     try {
       final result = await authDatasource.login(username, password);
-      
+
       if (result is Map && result['status'] == '2fa_required') {
-        emit(Login2FARequired(
-          userId: result['userId'] as int,
-          maskedPhone: result['maskedPhone'] as String,
-          username: username,
-          password: password,
-        ));
+        emit(
+          Login2FARequired(
+            userId: result['userId'] as int,
+            maskedPhone: result['maskedPhone'] as String,
+            username: username,
+            password: password,
+          ),
+        );
       } else if (result is UserModel) {
         final savedUser = await _storage.getBioUser();
-        final canCheck = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
-        
+        final canCheck =
+            await _localAuth.canCheckBiometrics ||
+            await _localAuth.isDeviceSupported();
+
+        if (savedUser != null) {
+          await _storage.saveBioCredentials(username, password);
+        }
+
         bool promptBio = canCheck && savedUser == null;
-        
-        emit(LoginSuccess(result, promptBiometrics: promptBio, savedUsername: username, savedPassword: password));
+
+        emit(
+          LoginSuccess(
+            result,
+            promptBiometrics: promptBio,
+            savedUsername: username,
+            savedPassword: password,
+          ),
+        );
       }
     } catch (e) {
       Log.e('Error en login tradicional', e);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/pedido_model.dart';
 import '../../domain/detalle_model.dart';
+import '../../data/pedidos_datasource.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class PedidoDetailsModal extends StatelessWidget {
@@ -12,10 +13,11 @@ class PedidoDetailsModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final apiClient = ApiClient();
+    final datasource = PedidosDatasource(apiClient: apiClient);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return FutureBuilder(
-      future: apiClient.dio.get('/detalle/pedido/listar/${pedido.id}'),
+    return FutureBuilder<List<DetalleModel>>(
+      future: datasource.getPedidoDetalles(pedido.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
@@ -48,8 +50,8 @@ class PedidoDetailsModal extends StatelessWidget {
           );
         }
 
-        final List<dynamic> data = snapshot.data?.data ?? [];
-        if (data.isEmpty) {
+        final details = snapshot.data ?? [];
+        if (details.isEmpty) {
           return const SizedBox(
             height: 220,
             child: Center(
@@ -61,7 +63,7 @@ class PedidoDetailsModal extends StatelessWidget {
           );
         }
 
-        final details = data.map((j) => DetalleModel.fromJson(j)).toList()
+        final sortedDetails = List<DetalleModel>.from(details)
           ..sort((a, b) => a.productoNombre.toLowerCase().compareTo(b.productoNombre.toLowerCase()));
 
         return Padding(
@@ -93,7 +95,7 @@ class PedidoDetailsModal extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          '${details.length} productos registrados',
+                          '${sortedDetails.length} productos registrados',
                           style: TextStyle(
                             fontSize: 13.0,
                             color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
@@ -115,9 +117,9 @@ class PedidoDetailsModal extends StatelessWidget {
                 ),
                 child: ListView.builder(
                   shrinkWrap: true,
-                  itemCount: details.length,
+                  itemCount: sortedDetails.length,
                   itemBuilder: (context, index) {
-                    final item = details[index];
+                    final item = sortedDetails[index];
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10.0),
                       padding: const EdgeInsets.all(14.0),

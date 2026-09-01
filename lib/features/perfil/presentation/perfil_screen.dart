@@ -67,6 +67,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
+  void _populateFields(Map<String, dynamic> userData) {
+    _userId = int.tryParse(userData['id']?.toString() ?? '');
+    _nombresController.text = (userData['nombre'] ?? '').toString();
+    _apellidosController.text = (userData['apellido'] ?? '').toString();
+
+    final rawPhone = (userData['telefono'] ?? '').toString().trim();
+    String matchedDial = '';
+    String matchedNumber = rawPhone;
+
+    final match = RegExp(r'^(\+(?:502|503|504|505|506|501|52|1))(\d+)$').firstMatch(rawPhone);
+    if (match != null) {
+      matchedDial = match.group(1) ?? '';
+      matchedNumber = match.group(2) ?? '';
+    }
+
+    _codigoPais = matchedDial;
+    _telefonoController.text = matchedNumber;
+    _correoController.text = (userData['correo'] ?? '').toString();
+  }
+
   Future<void> _loadProfileData() async {
     setState(() {
       _isLoading = true;
@@ -78,58 +98,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
       Log.i('=== PERFIL DIAGNOSTIC ===');
       Log.i('userData JSON: $userData');
       if (userData != null) {
-        _userId = int.tryParse(userData['id'].toString());
-        Log.i('Parsed User ID: $_userId');
-        _nombresController.text = (userData['nombre'] ?? '').toString();
-        _apellidosController.text = (userData['apellido'] ?? '').toString();
-
-        final rawPhone = (userData['telefono'] ?? '').toString().trim();
-        String matchedDial = '';
-        String matchedNumber = rawPhone;
-
-        try {
-          final paisesResp = await ApiClient().dio.get('/pais/todos');
-          final List<dynamic> paisesList = paisesResp.data is List ? paisesResp.data : [];
-          final sortedPaises = [...paisesList]..sort((a, b) {
-              final aCode = (a['dialCode'] ?? '').toString().replaceAll(' ', '');
-              final bCode = (b['dialCode'] ?? '').toString().replaceAll(' ', '');
-              return bCode.length.compareTo(aCode.length);
-            });
-
-          for (final p in sortedPaises) {
-            String dial = (p['dialCode'] ?? '').toString().replaceAll(' ', '');
-            if (dial.isEmpty) continue;
-            if (!dial.startsWith('+')) dial = '+$dial';
-
-            if (rawPhone.startsWith(dial)) {
-              matchedDial = dial;
-              matchedNumber = rawPhone.substring(dial.length);
-              break;
-            }
-          }
-        } catch (paisErr) {
-          Log.w('No se pudo cargar la lista de países para coincidir prefijo: $paisErr');
-        }
-
-        if (matchedDial.isEmpty) {
-          // Fallback seguro a prefijos comunes de Centroamérica/Latam de 3 o 4 caracteres (+502, +503, etc.)
-          final match = RegExp(r'^(\+(?:502|503|504|505|506|501|52|1))(\d+)$').firstMatch(rawPhone);
-          if (match != null) {
-            matchedDial = match.group(1) ?? '';
-            matchedNumber = match.group(2) ?? '';
-          }
-        }
-
-        _codigoPais = matchedDial;
-        _telefonoController.text = matchedNumber;
-
-        _correoController.text = (userData['correo'] ?? '').toString();
+        await _storage.saveUserProfile(jsonEncode(userData));
+        _populateFields(userData);
       }
 
       // Intentar cargar avatar guardado en local
       final savedAvatar = await _storage.getUserAvatar();
       if (savedAvatar != null && savedAvatar.isNotEmpty) {
-        Log.i('Saved avatar found in SecureStorage (length: ${savedAvatar.length})');
         setState(() {
           _avatarBase64 = savedAvatar;
         });
@@ -137,33 +112,28 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
       if (_userId != null) {
         try {
-          Log.i('Fetching avatar for user ID: $_userId');
           final avatarResponse = await ApiClient().dio.get('/usuarios/$_userId/avatar');
           final av = avatarResponse.data['avatar'] as String?;
-          Log.i('Fetch avatar response status: ${avatarResponse.statusCode}');
-          Log.i('Avatar data length: ${av?.length ?? 0}');
           if (av != null && av.isNotEmpty) {
             setState(() {
               _avatarBase64 = av;
             });
             await _storage.saveUserAvatar(av);
           }
-        } catch (e) {
-          Log.w('Error fetching avatar from backend: $e');
-        }
-      } else {
-        Log.w('_userId is NULL, cannot fetch avatar');
+        } catch (_) {}
       }
     } catch (e) {
-      Log.e('Error loading profile data: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al cargar datos del perfil'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      Log.w('Sin red al cargar perfil. Leyendo de almacenamiento local...', e);
+      final cachedProfileStr = await _storage.getUserProfile();
+      if (cachedProfileStr != null && cachedProfileStr.isNotEmpty) {
+        final userData = jsonDecode(cachedProfileStr) as Map<String, dynamic>;
+        _populateFields(userData);
+      }
+      final savedAvatar = await _storage.getUserAvatar();
+      if (savedAvatar != null && savedAvatar.isNotEmpty) {
+        setState(() {
+          _avatarBase64 = savedAvatar;
+        });
       }
     } finally {
       if (mounted) {

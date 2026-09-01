@@ -115,7 +115,9 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> with WidgetsBindingOb
         final storage = SecureStorageService();
         final savedUser = await storage.getBioUser();
 
-        if (canCheck && savedUser == null && widget.username != null && widget.password != null) {
+        if (savedUser != null && widget.username != null && widget.password != null) {
+          await storage.saveBioCredentials(widget.username!, widget.password!);
+        } else if (canCheck && savedUser == null && widget.username != null && widget.password != null) {
           if (!mounted) return;
           final enableBio = await showDialog<bool>(
             context: context,

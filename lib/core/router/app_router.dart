@@ -11,6 +11,9 @@ import '../../features/pedidos/presentation/crear_pedido_screen.dart';
 import '../../features/ventas/presentation/ventas_screen.dart';
 import '../../features/produccion/presentation/produccion_screen.dart';
 import '../../features/compras/presentation/compras_screen.dart';
+import '../../features/administracion/presentation/administracion_screen.dart';
+import '../../features/inventario/presentation/inventario_screen.dart';
+import '../../features/gestion_area/presentation/gestion_area_screen.dart';
 import '../../features/perfil/presentation/perfil_screen.dart';
 
 class AppRouter {
@@ -97,6 +100,27 @@ class AppRouter {
       GoRoute(
         path: '/compras',
         builder: (context, state) => const ComprasScreen(),
+      ),
+      GoRoute(
+        path: '/administracion',
+        builder: (context, state) {
+          final opcion = state.uri.queryParameters['opcion'];
+          return AdministracionScreen(opcion: opcion);
+        },
+      ),
+      GoRoute(
+        path: '/inventario',
+        builder: (context, state) {
+          final opcion = state.uri.queryParameters['opcion'];
+          return InventarioScreen(opcion: opcion);
+        },
+      ),
+      GoRoute(
+        path: '/gestion-area',
+        builder: (context, state) {
+          final opcion = state.uri.queryParameters['opcion'];
+          return GestionAreaScreen(opcion: opcion);
+        },
       ),
       GoRoute(
         path: '/profile',

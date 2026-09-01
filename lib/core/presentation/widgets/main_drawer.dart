@@ -80,38 +80,60 @@ class MainDrawer extends StatelessWidget {
     String optionName,
   ) {
     final nameLower = optionName.toLowerCase();
-    if (nameLower == 'crear pedido') {
+    final pathLower = routePath.toLowerCase();
+
+    if (nameLower == 'crear pedido' || pathLower.contains('pedido/crear')) {
       context.go('/pedidos/crear');
-    } else if (nameLower == 'historial pedido') {
+    } else if (nameLower == 'historial pedido' ||
+        (pathLower.contains('pedido') &&
+            !pathLower.contains('exportar') &&
+            !pathLower.contains('compras'))) {
       context.go('/pedidos');
     } else if (nameLower == 'pedidos entrantes' ||
-        nameLower == 'exportar pedido') {
+        nameLower == 'exportar pedido' ||
+        pathLower.contains('ventas') ||
+        pathLower.contains('exportar')) {
       context.go('/ventas');
-    } else if (nameLower == 'asignación de áreas' ||
-        nameLower == 'asignacion de areas' ||
-        nameLower == 'pendiente') {
+    } else if (nameLower.contains('area') ||
+        nameLower.contains('área') ||
+        pathLower.contains('area') ||
+        pathLower.contains('área')) {
+      context.go('/gestion-area?opcion=${Uri.encodeComponent(optionName)}');
+    } else if (nameLower == 'pendiente' || pathLower.contains('produccion')) {
       context.go('/produccion');
     } else if (nameLower == 'comprador' ||
         nameLower == 'jefe de compras' ||
-        nameLower == 'control de calidad') {
+        nameLower == 'control de calidad' ||
+        pathLower.contains('compras') ||
+        pathLower.contains('comprador') ||
+        pathLower.contains('calidad')) {
       context.go('/compras');
+    } else if (pathLower.contains('inventario') ||
+        pathLower.contains('stock') ||
+        nameLower.contains('inventario') ||
+        nameLower.contains('stock') ||
+        nameLower.contains('kardex')) {
+      context.go('/inventario?opcion=${Uri.encodeComponent(optionName)}');
+    } else if (pathLower.contains('pais') ||
+        pathLower.contains('ciudad') ||
+        pathLower.contains('ruta') ||
+        pathLower.contains('tienda') ||
+        pathLower.contains('empresa') ||
+        pathLower.contains('deus') ||
+        pathLower.contains('items') ||
+        pathLower.contains('usuario') ||
+        pathLower.contains('admin') ||
+        nameLower == 'pais' ||
+        nameLower == 'departamento' ||
+        nameLower == 'rutas' ||
+        nameLower == 'tienda' ||
+        nameLower == 'empresa' ||
+        nameLower == 'deus' ||
+        nameLower == 'productos' ||
+        nameLower == 'usuarios') {
+      context.go('/administracion?opcion=${Uri.encodeComponent(optionName)}');
     } else {
-      final pathLower = routePath.toLowerCase();
-      if (pathLower.contains('pedido/crear') ||
-          pathLower.contains('pedido/listar')) {
-        context.go(pathLower.contains('crear') ? '/pedidos/crear' : '/pedidos');
-      } else if (pathLower.contains('pedido')) {
-        context.go('/pedidos');
-      } else if (pathLower.contains('ventas') ||
-          pathLower.contains('exportar')) {
-        context.go('/ventas');
-      } else if (pathLower.contains('produccion') ||
-          pathLower.contains('areas')) {
-        context.go('/produccion');
-      } else if (pathLower.contains('compras') ||
-          pathLower.contains('comprador')) {
-        context.go('/compras');
-      }
+      context.go('/administracion?opcion=${Uri.encodeComponent(optionName)}');
     }
   }
 
