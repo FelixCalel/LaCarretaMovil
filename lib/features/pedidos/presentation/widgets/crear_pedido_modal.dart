@@ -85,14 +85,17 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
     final normalTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
     final disabledTextColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
-        top: 12.0,
-        left: 20.0,
-        right: 20.0,
-      ),
-      child: SingleChildScrollView(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
+            top: 12.0,
+            left: 20.0,
+            right: 20.0,
+          ),
+          child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -274,6 +277,8 @@ class _CrearPedidoModalState extends State<CrearPedidoModal> {
             const SizedBox(height: 12.0),
           ],
         ),
+      ),
+    ),
       ),
     );
   }

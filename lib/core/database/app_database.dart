@@ -25,7 +25,7 @@ class AppDatabase {
 
       return await openDatabase(
         path,
-        version: 3,
+        version: 4,
         onConfigure: _onConfigure,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -141,9 +141,59 @@ class AppDatabase {
       )
     ''');
 
+    await _createProduccionTables(db);
     await _createIndexes(db);
 
     Log.i('Tablas e índices SQLite creados exitosamente.');
+  }
+
+  Future<void> _createProduccionTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS produccion_grupos_local (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        etapa_id INTEGER NOT NULL,
+        id_grupo INTEGER,
+        nombre_grupo TEXT,
+        raw_json TEXT NOT NULL,
+        updated_at TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS produccion_recetas_local (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pedido_id INTEGER NOT NULL,
+        id_almacen INTEGER,
+        raw_json TEXT NOT NULL,
+        updated_at TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS produccion_mesas_activas_local (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        raw_json TEXT NOT NULL,
+        updated_at TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS catalog_almacenes (
+        id INTEGER PRIMARY KEY,
+        codigo TEXT,
+        nombre TEXT NOT NULL,
+        state INTEGER DEFAULT 1,
+        raw_json TEXT,
+        updated_at TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS produccion_metadata_local (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    ''');
   }
 
   Future<void> _createIndexes(Database db) async {
@@ -174,6 +224,12 @@ class AppDatabase {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue (status)',
     );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_prod_grupos_etapa ON produccion_grupos_local (etapa_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_prod_recetas_pedido ON produccion_recetas_local (pedido_id)',
+    );
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -189,6 +245,10 @@ class AppDatabase {
         await db.execute('ALTER TABLE catalog_tiendas ADD COLUMN pais_id INTEGER DEFAULT 0');
       } catch (_) {}
     }
+    if (oldVersion < 4) {
+      await _createProduccionTables(db);
+      await _createIndexes(db);
+    }
   }
 
   Future<void> clearAllData() async {
@@ -200,6 +260,11 @@ class AppDatabase {
     await db.delete('pedidos_local');
     await db.delete('pedidos_detalle_local');
     await db.delete('sync_queue');
+    await db.delete('produccion_grupos_local');
+    await db.delete('produccion_recetas_local');
+    await db.delete('produccion_mesas_activas_local');
+    await db.delete('catalog_almacenes');
+    await db.delete('produccion_metadata_local');
     Log.i('Todos los datos locales de SQLite fueron limpiados.');
   }
 }

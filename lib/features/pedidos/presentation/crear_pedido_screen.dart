@@ -72,43 +72,45 @@ class _CrearPedidoScreenViewState extends State<_CrearPedidoScreenView> {
                   Text('Realizar Pedido'),
                 ],
               ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: dateController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Fecha de Entrega',
-                        suffixIcon: Icon(Icons.calendar_month_rounded),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: dateController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Fecha de Entrega',
+                          suffixIcon: Icon(Icons.calendar_month_rounded),
+                        ),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(const Duration(days: 30)),
+                          );
+                          if (picked != null) {
+                            setDialogState(() {
+                              selectedDate = picked;
+                              dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+                            });
+                          }
+                        },
                       ),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(const Duration(days: 30)),
-                        );
-                        if (picked != null) {
-                          setDialogState(() {
-                            selectedDate = picked;
-                            dateController.text = DateFormat('yyyy-MM-dd').format(picked);
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
-                    TextFormField(
-                      controller: commentController,
-                      decoration: const InputDecoration(
-                        labelText: 'Comentario / Observaciones',
-                        hintText: 'Instrucciones especiales...',
+                      const SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: commentController,
+                        decoration: const InputDecoration(
+                          labelText: 'Comentario / Observaciones',
+                          hintText: 'Instrucciones especiales...',
+                        ),
+                        maxLines: 2,
                       ),
-                      maxLines: 2,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               actions: [

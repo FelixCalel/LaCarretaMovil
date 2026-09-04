@@ -66,14 +66,17 @@ class PedidoDetailsModal extends StatelessWidget {
         final sortedDetails = List<DetalleModel>.from(details)
           ..sort((a, b) => a.productoNombre.toLowerCase().compareTo(b.productoNombre.toLowerCase()));
 
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
-            top: 12.0,
-            left: 20.0,
-            right: 20.0,
-          ),
-          child: Column(
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 650),
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
+                top: 12.0,
+                left: 20.0,
+                right: 20.0,
+              ),
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -195,7 +198,9 @@ class PedidoDetailsModal extends StatelessWidget {
               const SizedBox(height: 12.0),
             ],
           ),
-        );
+        ),
+      ),
+    );
       },
     );
   }

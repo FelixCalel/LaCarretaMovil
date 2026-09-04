@@ -16,7 +16,6 @@ import '../network/api_client.dart';
 import 'models/modulo_model.dart';
 import 'models/opcion_model.dart';
 import 'widgets/main_drawer.dart';
-import 'widgets/main_bottom_nav.dart';
 import '../services/sync_service.dart';
 
 class MainLayout extends StatefulWidget {
@@ -612,14 +611,6 @@ class _MainLayoutState extends State<MainLayout> {
           ],
         ),
         floatingActionButton: widget.floatingActionButton,
-        bottomNavigationBar:
-            _groupedModules.any((m) => m.id == 2 || m.id == 3 || m.id == 13)
-            ? MainBottomNav(
-                groupedModules: _groupedModules,
-                location: location,
-                primaryColor: primaryColor,
-              )
-            : null,
       ),
     );
   }

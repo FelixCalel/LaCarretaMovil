@@ -95,7 +95,10 @@ class AppRouter {
       ),
       GoRoute(
         path: '/produccion',
-        builder: (context, state) => const ProduccionScreen(),
+        builder: (context, state) {
+          final opcion = state.uri.queryParameters['opcion'];
+          return ProduccionScreen(opcion: opcion);
+        },
       ),
       GoRoute(
         path: '/compras',

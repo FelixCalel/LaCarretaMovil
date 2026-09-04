@@ -7,6 +7,7 @@ import '../database/app_database.dart';
 import '../../features/pedidos/data/pedidos_local_datasource.dart';
 import '../../features/pedidos/domain/catalog_models.dart';
 import '../../features/pedidos/domain/pedido_model.dart';
+import '../../features/produccion/data/produccion_datasource.dart';
 
 enum SyncStatus { idle, syncing, success, error }
 
@@ -126,6 +127,16 @@ class SyncService {
             final db = await AppDatabase().database;
             await db.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
             successCount++;
+          } else if (action == 'PROD_UPDATE_MULTIPLE' || action == 'PROD_UPDATE_SINGLE' || action == 'PROD_UPDATE_RECETA_LINEA') {
+            await _apiClient.dio.put(endpoint, data: payload);
+            final db = await AppDatabase().database;
+            await db.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
+            successCount++;
+          } else if (action == 'PROD_AVANZAR_MULTIPLE' || action == 'PROD_SYNC_RECETA' || action == 'PROD_RECHAZO' || action == 'PROD_EXPORTAR_SAP' || action == 'PROD_SAVE_PROVEEDORES') {
+            await _apiClient.dio.post(endpoint, data: payload);
+            final db = await AppDatabase().database;
+            await db.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
+            successCount++;
           }
         } catch (itemErr) {
           Log.e('[SYNC-ERROR] Error procesando ítem $queueId', itemErr);
@@ -149,6 +160,9 @@ class SyncService {
       // 3. Descargar y actualizar listado de pedidos y detalles
       await _syncPedidos();
 
+      // 4. Descargar y actualizar datos del módulo de producción
+      await _syncProduccion();
+
       Log.i('================ SINCRONIZACIÓN FINALIZADA CON ÉXITO ================');
       _syncStatusController.add(SyncStatus.success);
       return SyncResult(syncedMutations: successCount, failedMutations: errorCount);
@@ -158,6 +172,23 @@ class SyncService {
       return SyncResult(syncedMutations: successCount, failedMutations: errorCount, error: e.toString());
     } finally {
       _isSyncing = false;
+    }
+  }
+
+  Future<void> _syncProduccion() async {
+    try {
+      final prodDs = ProduccionDatasource();
+      await Future.wait([
+        prodDs.getPedidosAgrupados(etapaId: 1),
+        prodDs.getPedidosAgrupados(etapaId: 2),
+        prodDs.getPedidosAgrupados(etapaId: 3),
+        prodDs.getAlmacenes(),
+        prodDs.getActiveMesaAssignments(),
+        prodDs.getUnassignedOrdersCount(),
+      ]);
+      Log.i('[SYNC-PRODUCCION] Datos de producción (etapas 1, 2, 3, almacenes, mesas) actualizados en SQLite.');
+    } catch (e) {
+      Log.w('[SYNC-PRODUCCION] No se pudo refrescar producción en segundo plano: $e');
     }
   }
 

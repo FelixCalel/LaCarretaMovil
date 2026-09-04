@@ -99,8 +99,14 @@ class MainDrawer extends StatelessWidget {
         pathLower.contains('area') ||
         pathLower.contains('área')) {
       context.go('/gestion-area?opcion=${Uri.encodeComponent(optionName)}');
-    } else if (nameLower == 'pendiente' || pathLower.contains('produccion')) {
-      context.go('/produccion');
+    } else if (nameLower == 'pendiente' ||
+        nameLower.contains('producci') ||
+        nameLower.contains('fabricaci') ||
+        pathLower.contains('produccion') ||
+        pathLower.contains('fabricacion') ||
+        pathLower.contains('digitador') ||
+        pathLower.contains('mesa')) {
+      context.go('/produccion?opcion=${Uri.encodeComponent(optionName)}');
     } else if (nameLower == 'comprador' ||
         nameLower == 'jefe de compras' ||
         nameLower == 'control de calidad' ||

@@ -323,9 +323,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-                child: Form(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                    child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
@@ -544,6 +547,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 ),
               ),
             ),
-    );
+          ),
+        ),
+      );
   }
 }

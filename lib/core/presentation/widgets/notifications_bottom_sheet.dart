@@ -18,11 +18,14 @@ class NotificationsBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCardColor : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkCardColor : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
       child: BlocBuilder<NotificationsCubit, NotificationsState>(
         builder: (context, state) {
           return Column(
@@ -236,6 +239,8 @@ class NotificationsBottomSheet extends StatelessWidget {
             ],
           );
         },
+      ),
+    ),
       ),
     );
   }
