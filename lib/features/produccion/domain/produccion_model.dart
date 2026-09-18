@@ -40,11 +40,15 @@ class PedidoProduccionModel {
   final String? fechaOrdenSap;
   final int? idAlmacen;
   final String? codigoAlmacen;
+  final int? idMesa;
+  final int? idUsuario;
 
   PedidoProduccionModel({
     required this.id,
     this.productoId,
     this.idAsigArea,
+    this.idMesa,
+    this.idUsuario,
     required this.cantidadUnidad,
     this.idUnidadMedida,
     this.noBatch,
@@ -102,6 +106,8 @@ class PedidoProduccionModel {
       id: parseInt(json['id']) ?? 0,
       productoId: parseInt(json['productoId']),
       idAsigArea: parseInt(json['id_asigArea']),
+      idMesa: parseInt(json['id_mesa']),
+      idUsuario: parseInt(json['id_usuario']),
       cantidadUnidad: parseDouble(json['cantidadUnidad']),
       idUnidadMedida: parseInt(json['id_unidadMedida']),
       noBatch: parseInt(json['NoBatch']),
@@ -149,11 +155,15 @@ class PedidoProduccionModel {
     String? trazabilidadProd,
     String? trazabilidadDig,
     int? idAlmacen,
+    int? idMesa,
+    int? idUsuario,
   }) {
     return PedidoProduccionModel(
       id: id,
       productoId: productoId,
       idAsigArea: idAsigArea,
+      idMesa: idMesa ?? this.idMesa,
+      idUsuario: idUsuario ?? this.idUsuario,
       cantidadUnidad: cantidadUnidad,
       idUnidadMedida: idUnidadMedida,
       noBatch: noBatch,
@@ -238,6 +248,8 @@ class PedidoProduccionModel {
       'fecha_orden_sap': fechaOrdenSap,
       'id_almacen': idAlmacen,
       'codigoAlmacen': codigoAlmacen,
+      'id_mesa': idMesa,
+      'id_usuario': idUsuario,
     };
   }
 }

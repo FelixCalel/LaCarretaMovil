@@ -134,15 +134,56 @@ class ProduccionFabricacionCubit extends Cubit<ProduccionFabricacionState> {
     }
   }
 
+  /// Reparte [newQty] entre los pedidos originales de un producto consolidado,
+  /// proporcionalmente a su `cantidadUnidad` (capacidad solicitada), de modo
+  /// que la suma de las cantidades repartidas sea exactamente [newQty] y no
+  /// [newQty] repetido por cada pedido original.
+  List<double> _distributeQuantity(
+    List<PedidoProduccionModel> originals,
+    double newQty,
+  ) {
+    if (originals.length == 1) return [newQty];
+
+    final totalCapacity =
+        originals.fold<double>(0, (sum, o) => sum + o.cantidadUnidad);
+
+    final shares = List<double>.filled(originals.length, 0);
+    if (totalCapacity > 0) {
+      for (var i = 0; i < originals.length; i++) {
+        shares[i] = (originals[i].cantidadUnidad / totalCapacity) * newQty;
+      }
+    } else {
+      // Sin capacidad de referencia: reparte en partes iguales.
+      final equalShare = newQty / originals.length;
+      for (var i = 0; i < originals.length; i++) {
+        shares[i] = equalShare;
+      }
+    }
+
+    // Ajusta el residuo de redondeo en el último ítem para que la suma
+    // cuadre exactamente con newQty.
+    final assignedSoFar =
+        shares.sublist(0, shares.length - 1).fold<double>(0, (a, b) => a + b);
+    shares[shares.length - 1] = newQty - assignedSoFar;
+
+    return shares;
+  }
+
   Future<void> updateProcesado(ConsolidatedProductModel item, double newQty) async {
-    final primaryOrder = item.originalItems.isNotEmpty ? item.originalItems.first : null;
-    if (primaryOrder == null) return;
+    final originals = item.originalItems;
+    if (originals.isEmpty) return;
+    final primaryOrder = originals.first;
+
+    final distributed = _distributeQuantity(originals, newQty);
+    final qtyById = {
+      for (var i = 0; i < originals.length; i++) originals[i].id: distributed[i],
+    };
 
     final updatedGroups = state.allGroups.map((g) {
       final updatedItems = g.items.map((it) {
-        if (it.deudorCodigo == item.deudorCodigo &&
-            it.productoNombre == item.productoNombre) {
-          return it.copyWith(cantidad: newQty);
+        final newCantidad = qtyById[it.id];
+        if (newCantidad != null) {
+          return it.copyWith(cantidad: newCantidad);
         }
         return it;
       }).toList();
@@ -161,11 +202,15 @@ class ProduccionFabricacionCubit extends Cubit<ProduccionFabricacionState> {
     emit(state.copyWith(allGroups: updatedGroups));
 
     try {
-      final ids = item.originalItems.map((i) => i.id).toList();
-      await datasource.updateMultiplePedidos(
-        ids: ids,
-        data: {'cantidad': newQty},
-      );
+      // Cada pedido original recibe su cantidad repartida individualmente
+      // (no updateMultiplePedidos, que aplicaría el mismo valor a todos).
+      await Future.wait([
+        for (final entry in qtyById.entries)
+          datasource.updatePedidoProduccion(
+            id: entry.key,
+            data: {'cantidad': entry.value},
+          ),
+      ]);
       await datasource.syncProcesadoReceta(
         pedidoId: primaryOrder.id,
         cantidadProcesada: newQty,

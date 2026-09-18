@@ -1,8 +1,20 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/logger_service.dart';
 import '../domain/produccion_model.dart';
+
+final _idempotencyRandom = Random();
+
+/// Clave de idempotencia local para una mutación offline encolada. No es un
+/// UUID criptográfico, pero es suficiente para deduplicar reintentos del
+/// mismo dispositivo (timestamp + contador aleatorio).
+String _generateIdempotencyKey() {
+  final ts = DateTime.now().microsecondsSinceEpoch;
+  final rand = _idempotencyRandom.nextInt(0x7fffffff);
+  return 'mob-$ts-$rand';
+}
 
 class ProduccionLocalDatasource {
   final AppDatabase appDb;
@@ -260,16 +272,24 @@ class ProduccionLocalDatasource {
   }) async {
     try {
       final db = await appDb.database;
+      final idempotencyKey = _generateIdempotencyKey();
+      // La clave viaja también dentro del payload para que, si el backend
+      // llega a soportar deduplicación por idempotencia, ya la reciba.
+      final payloadWithKey = {
+        ...payload,
+        'idempotencyKey': idempotencyKey,
+      };
       await db.insert('sync_queue', {
         'action': action,
         'endpoint': endpoint,
         'method': method,
-        'payload_json': jsonEncode(payload),
+        'payload_json': jsonEncode(payloadWithKey),
         'status': 'PENDING',
         'retry_count': 0,
         'created_at': DateTime.now().toIso8601String(),
+        'idempotency_key': idempotencyKey,
       });
-      Log.i('[OFFLINE-PROD] Mutación encolada en sync_queue: $action -> $endpoint');
+      Log.i('[OFFLINE-PROD] Mutación encolada en sync_queue: $action -> $endpoint (key=$idempotencyKey)');
     } catch (e) {
       Log.e('[OFFLINE-PROD] Error al encolar mutación en sync_queue', e);
     }
@@ -308,7 +328,7 @@ class ProduccionLocalDatasource {
       final updatedItems = g.items.map((item) {
         if (item.id == pedidoId || g.pedidoId == pedidoId) {
           modified = true;
-          return item; // Los ítems mantienen consistencia
+          return item.copyWith(idMesa: mesaId, idUsuario: usuarioId);
         }
         return item;
       }).toList();
@@ -367,9 +387,11 @@ class ProduccionLocalDatasource {
       payload: payload,
     );
 
-    // 2. Actualización optimista de etapas en caché local
+    // 2. Actualización optimista de etapas en caché local.
+    // Las etapas del pipeline de producción son secuenciales (1, 2, 3, 4, ...),
+    // así que la etapa origen es siempre la anterior a la etapa destino.
     final targetEtapa = nuevaEtapaId ?? 2;
-    final sourceEtapa = targetEtapa == 2 ? 1 : (targetEtapa == 3 ? 2 : 1);
+    final sourceEtapa = targetEtapa > 1 ? targetEtapa - 1 : 1;
 
     final sourceGroups = await getPedidosAgrupados(etapaId: sourceEtapa);
     final targetGroups = await getPedidosAgrupados(etapaId: targetEtapa);

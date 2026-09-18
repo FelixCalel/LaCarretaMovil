@@ -25,7 +25,7 @@ class AppDatabase {
 
       return await openDatabase(
         path,
-        version: 4,
+        version: 5,
         onConfigure: _onConfigure,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -137,7 +137,16 @@ class AppDatabase {
         status TEXT DEFAULT 'PENDING',
         retry_count INTEGER DEFAULT 0,
         created_at TEXT,
-        last_error TEXT
+        last_error TEXT,
+        idempotency_key TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sync_completed_log (
+        idempotency_key TEXT PRIMARY KEY,
+        action TEXT,
+        completed_at TEXT
       )
     ''');
 
@@ -248,6 +257,20 @@ class AppDatabase {
     if (oldVersion < 4) {
       await _createProduccionTables(db);
       await _createIndexes(db);
+    }
+    if (oldVersion < 5) {
+      try {
+        await db.execute('ALTER TABLE sync_queue ADD COLUMN idempotency_key TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS sync_completed_log (
+            idempotency_key TEXT PRIMARY KEY,
+            action TEXT,
+            completed_at TEXT
+          )
+        ''');
+      } catch (_) {}
     }
   }
 

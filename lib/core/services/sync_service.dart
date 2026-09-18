@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:sqflite/sqflite.dart';
 import '../network/api_client.dart';
 import '../services/logger_service.dart';
 import '../database/app_database.dart';
@@ -132,7 +133,46 @@ class SyncService {
             final db = await AppDatabase().database;
             await db.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
             successCount++;
-          } else if (action == 'PROD_AVANZAR_MULTIPLE' || action == 'PROD_SYNC_RECETA' || action == 'PROD_RECHAZO' || action == 'PROD_EXPORTAR_SAP' || action == 'PROD_SAVE_PROVEEDORES') {
+          } else if (action == 'PROD_AVANZAR_MULTIPLE' || action == 'PROD_RECHAZO' || action == 'PROD_EXPORTAR_SAP' || action == 'PROD_SAVE_PROVEEDORES') {
+            // Estas mutaciones no son idempotentes en el backend: si esta
+            // misma entrada de cola (mismo idempotency_key) ya se envió con
+            // éxito antes (p. ej. la app se cerró entre el POST exitoso y el
+            // borrado de la cola), no la reenviamos para evitar duplicar el
+            // avance de etapa, el rechazo o la exportación a SAP.
+            final idempotencyKey = item['idempotency_key'] as String?;
+            final db = await AppDatabase().database;
+
+            var alreadyCompleted = false;
+            if (idempotencyKey != null) {
+              final existing = await db.query(
+                'sync_completed_log',
+                where: 'idempotency_key = ?',
+                whereArgs: [idempotencyKey],
+                limit: 1,
+              );
+              alreadyCompleted = existing.isNotEmpty;
+            }
+
+            if (!alreadyCompleted) {
+              await _apiClient.dio.post(endpoint, data: payload);
+              if (idempotencyKey != null) {
+                await db.insert(
+                  'sync_completed_log',
+                  {
+                    'idempotency_key': idempotencyKey,
+                    'action': action,
+                    'completed_at': DateTime.now().toIso8601String(),
+                  },
+                  conflictAlgorithm: ConflictAlgorithm.replace,
+                );
+              }
+            } else {
+              Log.i('[SYNC] Ítem $queueId ($action) ya se había sincronizado antes (idempotency_key=$idempotencyKey). Omitiendo reenvío.');
+            }
+
+            await db.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
+            successCount++;
+          } else if (action == 'PROD_SYNC_RECETA') {
             await _apiClient.dio.post(endpoint, data: payload);
             final db = await AppDatabase().database;
             await db.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);

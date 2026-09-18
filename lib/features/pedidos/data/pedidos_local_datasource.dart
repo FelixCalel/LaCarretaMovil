@@ -392,15 +392,52 @@ class PedidosLocalDatasource {
     );
   }
 
+  /// Tope de reintentos antes de dejar de recoger un ítem en
+  /// [getPendingSyncItems]. Pasado este límite, un error permanente (p. ej.
+  /// una transición de etapa que el backend siempre rechaza) dejaría de
+  /// reintentarse en silencio para siempre.
+  static const int maxSyncRetries = 5;
+
   Future<void> markSyncItemFailed(int queueId, String error) async {
     final db = await appDb.database;
+    final rows = await db.query(
+      'sync_queue',
+      columns: ['retry_count'],
+      where: 'id = ?',
+      whereArgs: [queueId],
+      limit: 1,
+    );
+    final currentRetries =
+        rows.isNotEmpty ? (rows.first['retry_count'] as int? ?? 0) : 0;
+    final newRetries = currentRetries + 1;
+    final newStatus = newRetries >= maxSyncRetries ? 'FAILED_PERMANENT' : 'PENDING';
+
     await db.rawUpdate(
       '''
-      UPDATE sync_queue 
-      SET retry_count = retry_count + 1, last_error = ? 
+      UPDATE sync_queue
+      SET retry_count = ?, last_error = ?, status = ?
       WHERE id = ?
     ''',
-      [error, queueId],
+      [newRetries, error, newStatus, queueId],
+    );
+
+    if (newStatus == 'FAILED_PERMANENT') {
+      Log.e(
+        '[SYNC] Ítem $queueId superó $maxSyncRetries reintentos. '
+        'Marcado como FAILED_PERMANENT, ya no se reintentará automáticamente. Último error: $error',
+      );
+    }
+  }
+
+  /// Ítems que fallaron permanentemente tras agotar los reintentos y
+  /// requieren revisión manual (no se reintentan más en [syncAll]).
+  Future<List<Map<String, dynamic>>> getPermanentlyFailedSyncItems() async {
+    final db = await appDb.database;
+    return await db.query(
+      'sync_queue',
+      where: 'status = ?',
+      whereArgs: ['FAILED_PERMANENT'],
+      orderBy: 'id ASC',
     );
   }
 

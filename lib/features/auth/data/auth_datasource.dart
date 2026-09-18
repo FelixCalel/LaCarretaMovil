@@ -148,8 +148,24 @@ class AuthDatasource {
   }
 
   Future<void> logout() async {
+    final accessToken = await _storage.read(key: 'access_token');
+    final trustToken = await _storage.read(key: 'trust_token');
+
+    if (accessToken != null) {
+      try {
+        await apiClient.dio.post(
+          '/usuarios/logout',
+          data: {'trustToken': trustToken},
+          options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+        );
+      } catch (_) {
+        // Best-effort: si el backend no responde, igual cerramos sesión localmente.
+      }
+    }
+
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
+    await _storage.delete(key: 'trust_token');
     await _storage.delete(key: 'user_id');
     await _storage.delete(key: 'user_name');
     await _storage.delete(key: 'user_role_id');
