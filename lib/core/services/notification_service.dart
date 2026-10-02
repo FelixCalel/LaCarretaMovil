@@ -31,9 +31,9 @@ class NotificationService {
     _isConnecting = true;
 
     final storage = SecureStorageService();
-    final userId = await storage.getUserId();
+    final token = await storage.getAccessToken();
 
-    if (userId == null) {
+    if (token == null || token.isEmpty) {
       _isConnecting = false;
       return;
     }
@@ -46,7 +46,7 @@ class NotificationService {
 
     final apiUrl = Environment.apiBaseUrl;
     final wsBase = '${apiUrl.replaceFirst(RegExp(r'^http'), 'ws').replaceFirst('/api', '')}/ws';
-    final wsUrl = '$wsBase?userId=$userId';
+    final wsUrl = '$wsBase?token=${Uri.encodeQueryComponent(token)}';
 
     try {
       _webSocket = await WebSocket.connect(wsUrl);
@@ -61,7 +61,8 @@ class NotificationService {
           _handleDisconnect();
         },
         onDone: () {
-          _handleDisconnect();
+          final rechazado = _codigosRechazoAuth.contains(_webSocket?.closeCode);
+          _handleDisconnect(espera: rechazado ? const Duration(seconds: 30) : null);
         },
       );
     } catch (e) {
@@ -88,10 +89,12 @@ class NotificationService {
     }
   }
 
-  void _handleDisconnect() {
+  static const _codigosRechazoAuth = {1008, 4001};
+
+  void _handleDisconnect({Duration? espera}) {
     _webSocket = null;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+    _reconnectTimer = Timer(espera ?? const Duration(seconds: 5), () {
       connect();
     });
   }
