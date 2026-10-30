@@ -11,6 +11,8 @@ class SecureStorageService {
   // Keys Constants
   static const String _kAccessToken = 'access_token';
   static const String _kRefreshToken = 'refresh_token';
+  // Token de dispositivo de confianza (evita el SMS); no se borra al cerrar sesión.
+  static const String _kDeviceToken = 'device_token';
   static const String _kUserId = 'user_id';
   static const String _kUserName = 'user_name';
   static const String _kUserRoleId = 'user_role_id';
@@ -39,6 +41,7 @@ class SecureStorageService {
   // Write methods
   Future<void> saveAccessToken(String value) => _storage.write(key: _kAccessToken, value: value);
   Future<void> saveRefreshToken(String value) => _storage.write(key: _kRefreshToken, value: value);
+  Future<void> saveDeviceToken(String value) => _storage.write(key: _kDeviceToken, value: value);
   Future<void> saveUserId(String value) => _storage.write(key: _kUserId, value: value);
   Future<void> saveUserName(String value) => _storage.write(key: _kUserName, value: value);
   Future<void> saveUserRoleId(String value) => _storage.write(key: _kUserRoleId, value: value);

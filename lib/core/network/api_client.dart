@@ -90,6 +90,10 @@ class ApiClient {
                   response.data['refreshToken'] as String,
                 );
               }
+              final deviceToken = response.data['deviceToken'];
+              if (deviceToken != null) {
+                await _storage.saveDeviceToken(deviceToken as String);
+              }
 
               Log.i(
                 'Token refrescado con éxito. Liberando cola de peticiones...',

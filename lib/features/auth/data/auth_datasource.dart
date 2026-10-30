@@ -12,7 +12,8 @@ class AuthDatasource {
 
   Future<dynamic> login(String username, String password) async {
     try {
-      final trustToken = await _storage.read(key: 'trust_token');
+      // El token de dispositivo sobrevive al logout y al refresh; el trust_token (scope refresh) se revoca al rotar.
+      final trustToken = await _storage.read(key: 'device_token') ?? await _storage.read(key: 'trust_token');
 
       final response = await apiClient.dio.post(
         '/usuarios/login',
@@ -48,6 +49,10 @@ class AuthDatasource {
       final newTrustToken = data['trustToken'] ?? data['trust_token'];
       if (newTrustToken != null) {
         await _storage.write(key: 'trust_token', value: newTrustToken);
+      }
+      final deviceToken = data['deviceToken'];
+      if (deviceToken != null) {
+        await _storage.write(key: 'device_token', value: deviceToken as String);
       }
 
       // Guardar rutas del usuario
@@ -111,6 +116,10 @@ class AuthDatasource {
       final newTrustToken = data['trustToken'] ?? data['trust_token'];
       if (newTrustToken != null) {
         await _storage.write(key: 'trust_token', value: newTrustToken);
+      }
+      final deviceToken = data['deviceToken'];
+      if (deviceToken != null) {
+        await _storage.write(key: 'device_token', value: deviceToken as String);
       }
 
       // Guardar rutas del usuario
